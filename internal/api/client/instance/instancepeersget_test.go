@@ -66,7 +66,9 @@ func (suite *InstancePeersGetTestSuite) TestInstancePeersGetNoParams() {
 	suite.NoError(err)
 	suite.Equal(`[
   "example.org",
-  "fossbros-anonymous.io"
+  "fossbros-anonymous.io",
+  "thequeenisstillalive.technology",
+  "ëxample.org"
 ]`, dst.String())
 }
 
@@ -121,7 +123,9 @@ func (suite *InstancePeersGetTestSuite) TestInstancePeersGetNoParamsAuthorized()
 	suite.NoError(err)
 	suite.Equal(`[
   "example.org",
-  "fossbros-anonymous.io"
+  "fossbros-anonymous.io",
+  "thequeenisstillalive.technology",
+  "ëxample.org"
 ]`, dst.String())
 }
 
@@ -250,6 +254,12 @@ func (suite *InstancePeersGetTestSuite) TestInstancePeersGetAll() {
     "suspended_at": "2020-05-13T13:29:12.000Z",
     "comment": "reply-guying to tech posts",
     "severity": "suspend"
+  },
+  {
+    "domain": "thequeenisstillalive.technology"
+  },
+  {
+    "domain": "ëxample.org"
   }
 ]`, dst.String())
 }
@@ -330,6 +340,12 @@ func (suite *InstancePeersGetTestSuite) TestInstancePeersGetAllWithObfuscated() 
     "suspended_at": "2020-05-13T13:29:12.000Z",
     "comment": "reply-guying to tech posts",
     "severity": "suspend"
+  },
+  {
+    "domain": "thequeenisstillalive.technology"
+  },
+  {
+    "domain": "ëxample.org"
   }
 ]`, dst.String())
 }
@@ -371,7 +387,9 @@ func (suite *InstancePeersGetTestSuite) TestInstancePeersGetAllWithObfuscatedFla
   "example.org",
   "fossbros-anonymous.io",
   "o*g.*u**.t**.*or*t.*r**ev**",
-  "replyguys.com"
+  "replyguys.com",
+  "thequeenisstillalive.technology",
+  "ëxample.org"
 ]`, dst.String())
 }
 

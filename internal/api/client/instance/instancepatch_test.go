@@ -175,7 +175,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateInstanceInfo() {
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },
@@ -328,7 +328,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateTitleHTML() {
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },
@@ -481,7 +481,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateShortDescriptionHTML
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },
@@ -658,7 +658,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchEmptyContactEmail() {
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },
@@ -842,7 +842,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateThumbnail() {
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },
@@ -1041,7 +1041,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateThumbnailDescription
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },

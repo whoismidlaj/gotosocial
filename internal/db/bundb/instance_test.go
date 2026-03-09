@@ -45,7 +45,7 @@ func (suite *InstanceTestSuite) TestCountInstanceStatuses() {
 func (suite *InstanceTestSuite) TestCountInstancePeers() {
 	count, err := suite.db.CountInstancePeers(suite.T().Context())
 	suite.NoError(err)
-	suite.Equal(2, count)
+	suite.Equal(4, count)
 }
 
 func (suite *InstanceTestSuite) TestGetInstanceNonexistent() {
@@ -57,13 +57,13 @@ func (suite *InstanceTestSuite) TestGetInstanceNonexistent() {
 func (suite *InstanceTestSuite) TestGetInstancePeers() {
 	peers, err := suite.db.GetInstancePeers(suite.T().Context(), false)
 	suite.NoError(err)
-	suite.Len(peers, 2)
+	suite.Len(peers, 4)
 }
 
 func (suite *InstanceTestSuite) TestGetInstancePeersIncludeSuspended() {
 	peers, err := suite.db.GetInstancePeers(suite.T().Context(), true)
 	suite.NoError(err)
-	suite.Len(peers, 2)
+	suite.Len(peers, 5)
 }
 
 func (suite *InstanceTestSuite) TestGetInstanceAccounts() {

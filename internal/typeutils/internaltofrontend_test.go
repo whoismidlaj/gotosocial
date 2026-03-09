@@ -1754,7 +1754,7 @@ func (suite *InternalToFrontendTestSuite) TestInstanceV1ToFrontend() {
     "streaming_api": "wss://localhost:8080"
   },
   "stats": {
-    "domain_count": 2,
+    "domain_count": 4,
     "status_count": 23,
     "user_count": 5
   },
