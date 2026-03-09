@@ -415,17 +415,10 @@ func sizeofFollowRequest() uintptr {
 
 func sizeofInstance() uintptr {
 	return uintptr(size.Of(&gtsmodel.Instance{
-		ID:                     exampleID,
-		CreatedAt:              exampleTime,
-		UpdatedAt:              exampleTime,
-		Domain:                 exampleURI,
-		URI:                    exampleURI,
-		Title:                  exampleTextSmall,
-		ShortDescription:       exampleText,
-		Description:            exampleText,
-		ContactEmail:           exampleUsername,
-		ContactAccountUsername: exampleUsername,
-		ContactAccountID:       exampleID,
+		ID:                       exampleID,
+		Domain:                   exampleURI,
+		Software:                 exampleTextSmall,
+		LatestSuccessfulDelivery: exampleTime,
 	}))
 }
 

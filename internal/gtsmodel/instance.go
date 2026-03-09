@@ -17,31 +17,74 @@
 
 package gtsmodel
 
-import "time"
+import (
+	"time"
+)
 
-// Instance represents a federated instance, either local or remote.
+// Instance represents a
+// single federated instance.
 type Instance struct {
-	ID                     string       `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`                    // id of this item in the database
-	CreatedAt              time.Time    `bun:"type:timestamptz,nullzero,notnull,default:current_timestamp"` // when was item created
-	UpdatedAt              time.Time    `bun:"type:timestamptz,nullzero,notnull,default:current_timestamp"` // when was item last updated
-	Domain                 string       `bun:",nullzero,notnull,unique"`                                    // Instance domain eg example.org
-	Title                  string       `bun:""`                                                            // Title of this instance as it would like to be displayed.
-	URI                    string       `bun:",nullzero,notnull,unique"`                                    // base URI of this instance eg https://example.org
-	SuspendedAt            time.Time    `bun:"type:timestamptz,nullzero"`                                   // When was this instance suspended, if at all?
-	DomainBlockID          string       `bun:"type:CHAR(26),nullzero"`                                      // ID of any existing domain block for this instance in the database
-	DomainBlock            *DomainBlock `bun:"rel:belongs-to"`                                              // Domain block corresponding to domainBlockID
-	ShortDescription       string       `bun:""`                                                            // Short description of this instance
-	ShortDescriptionText   string       `bun:""`                                                            // Raw text version of short description (before parsing).
-	Description            string       `bun:""`                                                            // Longer description of this instance.
-	DescriptionText        string       `bun:""`                                                            // Raw text version of long description (before parsing).
-	CustomCSS              string       `bun:",nullzero"`                                                   // Custom CSS for the instance.
-	Terms                  string       `bun:""`                                                            // Terms and conditions of this instance.
-	TermsText              string       `bun:""`                                                            // Raw text version of terms (before parsing).
-	ContactEmail           string       `bun:""`                                                            // Contact email address for this instance
-	ContactAccountUsername string       `bun:",nullzero"`                                                   // Username of the contact account for this instance
-	ContactAccountID       string       `bun:"type:CHAR(26),nullzero"`                                      // Contact account ID in the database for this instance
-	ContactAccount         *Account     `bun:"rel:belongs-to"`                                              // account corresponding to contactAccountID
-	Reputation             int64        `bun:",notnull,default:0"`                                          // Reputation score of this instance
-	Version                string       `bun:",nullzero"`                                                   // Version of the software used on this instance
-	Rules                  []Rule       `bun:"-"`                                                           // List of instance rules
+	// ID of this item in the database.
+	ID string `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
+
+	// Instance domain,
+	// eg., example.org
+	Domain string `bun:",nullzero,notnull,unique"`
+
+	// Software deployed for this
+	// instance, eg., "mastodon".
+	Software string `bun:",nullzero"`
+
+	// Time of latest *SUCCESSFUL* attempt
+	// to deliver a message to this instance.
+	LatestSuccessfulDelivery time.Time `bun:"type:timestamptz,nullzero"`
+
+	// If latest attempts to deliver errored,
+	// this field stores error messages.
+	//
+	// Cleared on successful delivery.
+	DeliveryErrors []InstanceDeliveryError `bun:"type:jsonb,nullzero"`
+
+	// If latest attempts to deliver errored,
+	// this field stores the count of errors
+	// since the last successful delivery (if any).
+	DeliveryErrorsCount smallint `bun:",nullzero"`
+}
+
+// InstanceDeliveryError error models
+// an error encountered while trying
+// to deliver to a remote instance.
+type InstanceDeliveryError struct {
+	// Error contains the error message, either
+	// received from the remote instance or
+	// generated internally if the remote
+	// instance could not be reached at all.
+	Error string `json:"err"`
+
+	// Time contains the time when
+	// the error was encountered.
+	Time time.Time `json:"time"`
+}
+
+// InstanceOrderBy is for doing db
+// queries for admin view of instances
+type InstanceOrderBy enumType
+
+const (
+	InstanceOrderByUnknown InstanceOrderBy = iota
+	// Order alphabetically (a -> z).
+	InstanceOrderByAlphabetical
+	// Order by date instance first seen (newest -> oldest).
+	InstanceOrderByFirstSeen
+)
+
+func (d InstanceOrderBy) String() string {
+	switch d {
+	case InstanceOrderByAlphabetical:
+		return "alphabetical"
+	case InstanceOrderByFirstSeen:
+		return "first_seen"
+	default:
+		return "unknown"
+	}
 }

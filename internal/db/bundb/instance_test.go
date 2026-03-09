@@ -20,7 +20,6 @@ package bundb_test
 import (
 	"testing"
 
-	"code.superseriousbusiness.org/gotosocial/internal/config"
 	"code.superseriousbusiness.org/gotosocial/internal/db"
 	"code.superseriousbusiness.org/gotosocial/internal/gtsmodel"
 	"code.superseriousbusiness.org/gotosocial/internal/util"
@@ -32,39 +31,21 @@ type InstanceTestSuite struct {
 }
 
 func (suite *InstanceTestSuite) TestCountInstanceUsers() {
-	count, err := suite.db.CountInstanceUsers(suite.T().Context(), config.GetHost())
+	count, err := suite.db.CountInstanceAccounts(suite.T().Context())
 	suite.NoError(err)
 	suite.Equal(5, count)
 }
 
-func (suite *InstanceTestSuite) TestCountInstanceUsersRemote() {
-	count, err := suite.db.CountInstanceUsers(suite.T().Context(), "fossbros-anonymous.io")
-	suite.NoError(err)
-	suite.Equal(1, count)
-}
-
 func (suite *InstanceTestSuite) TestCountInstanceStatuses() {
-	count, err := suite.db.CountInstanceStatuses(suite.T().Context(), config.GetHost())
+	count, err := suite.db.CountInstanceStatuses(suite.T().Context())
 	suite.NoError(err)
 	suite.Equal(23, count)
 }
 
-func (suite *InstanceTestSuite) TestCountInstanceStatusesRemote() {
-	count, err := suite.db.CountInstanceStatuses(suite.T().Context(), "fossbros-anonymous.io")
-	suite.NoError(err)
-	suite.Equal(4, count)
-}
-
-func (suite *InstanceTestSuite) TestCountInstanceDomains() {
-	count, err := suite.db.CountInstanceDomains(suite.T().Context(), config.GetHost())
+func (suite *InstanceTestSuite) TestCountInstancePeers() {
+	count, err := suite.db.CountInstancePeers(suite.T().Context())
 	suite.NoError(err)
 	suite.Equal(2, count)
-}
-
-func (suite *InstanceTestSuite) TestGetInstanceOK() {
-	instance, err := suite.db.GetInstance(suite.T().Context(), "localhost:8080")
-	suite.NoError(err)
-	suite.NotNil(instance)
 }
 
 func (suite *InstanceTestSuite) TestGetInstanceNonexistent() {

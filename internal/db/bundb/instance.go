@@ -19,6 +19,10 @@ package bundb
 
 import (
 	"context"
+	"errors"
+	"math"
+	"slices"
+	"sync"
 	"time"
 
 	"code.superseriousbusiness.org/gopkg/log"
@@ -28,6 +32,7 @@ import (
 	"code.superseriousbusiness.org/gotosocial/internal/gtserror"
 	"code.superseriousbusiness.org/gotosocial/internal/gtsmodel"
 	"code.superseriousbusiness.org/gotosocial/internal/id"
+	"code.superseriousbusiness.org/gotosocial/internal/paging"
 	"code.superseriousbusiness.org/gotosocial/internal/state"
 	"code.superseriousbusiness.org/gotosocial/internal/util"
 	"github.com/uptrace/bun"
@@ -36,78 +41,41 @@ import (
 type instanceDB struct {
 	db    *bun.DB
 	state *state.State
+
+	// Used to lock when
+	// adding instance errors.
+	sync.Mutex
 }
 
-func (i *instanceDB) CountInstanceUsers(ctx context.Context, domain string) (int, error) {
-	localhost := (domain == config.GetHost() || domain == config.GetAccountDomain())
-
-	if localhost {
-		// Check for a cached instance user count, if so return this.
-		if n := i.state.Caches.DB.LocalInstance.Users.Load(); n != nil {
-			return *n, nil
-		}
+func (i *instanceDB) CountInstanceAccounts(ctx context.Context) (int, error) {
+	// Check for a cached instance accounts count. If present return this.
+	if n := i.state.Caches.DB.LocalInstance.Accounts.Load(); n != nil {
+		return *n, nil
 	}
 
-	q := i.db.
+	count, err := i.db.
 		NewSelect().
 		TableExpr("? AS ?", bun.Ident("accounts"), bun.Ident("account")).
+		// Just select IDs.
 		Column("account.id").
-		Where("? != ?", bun.Ident("account.username"), domain).
-		Where("? IS NULL", bun.Ident("account.suspended_at"))
-
-	if localhost {
-		// If the domain is *this* domain, just
-		// count where the domain field is null.
-		q = q.Where("? IS NULL", bun.Ident("account.domain"))
-	} else {
-		q = q.Where("? = ?", bun.Ident("account.domain"), domain)
-	}
-
-	count, err := q.Count(ctx)
+		// Local accounts only.
+		Where("? IS NULL", bun.Ident("account.domain")).
+		// Ignore instance account.
+		Where("? != ?", bun.Ident("account.username"), config.GetHost()).
+		// Exclude suspended accounts.
+		Where("? IS NULL", bun.Ident("account.suspended_at")).
+		Count(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	if localhost {
-		// Update cached instance users account value.
-		i.state.Caches.DB.LocalInstance.Users.Store(&count)
-	}
-
+	// Update cached instance accounts count value.
+	i.state.Caches.DB.LocalInstance.Accounts.Store(&count)
 	return count, nil
 }
 
-func (i *instanceDB) CountInstanceStatuses(ctx context.Context, domain string) (int, error) {
-	local := (domain == config.GetHost() || domain == config.GetAccountDomain())
-
-	if local {
-		return i.countLocalStatuses(ctx)
-	}
-
-	q := i.db.
-		NewSelect().
-		TableExpr("? AS ?", bun.Ident("statuses"), bun.Ident("status")).
-		// Join on the domain of the account.
-		Join(
-			"JOIN ? AS ? ON ? = ?",
-			bun.Ident("accounts"), bun.Ident("account"),
-			bun.Ident("account.id"), bun.Ident("status.account_id"),
-		).
-		Where("? = ?", bun.Ident("account.domain"), domain).
-		// Ignore pending approval.
-		Where("? = ?", bun.Ident("status.pending_approval"), false).
-		// Ignore direct messages.
-		Where("NOT ? = ?", bun.Ident("status.visibility"), gtsmodel.VisibilityDirect)
-
-	count, err := q.Count(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func (i *instanceDB) countLocalStatuses(ctx context.Context) (int, error) {
-	// Check for a cached instance statuses count, if so return this.
+func (i *instanceDB) CountInstanceStatuses(ctx context.Context) (int, error) {
+	// Check for a cached instance statuses count. If present return this.
 	if n := i.state.Caches.DB.LocalInstance.Statuses.Load(); n != nil {
 		return *n, nil
 	}
@@ -121,61 +89,107 @@ func (i *instanceDB) countLocalStatuses(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	// Update cached instance statuses account value.
+	// Update cached instance statuses count value.
 	i.state.Caches.DB.LocalInstance.Statuses.Store(&count)
-
 	return count, nil
 }
 
-func (i *instanceDB) CountInstanceDomains(ctx context.Context, domain string) (int, error) {
-	localhost := (domain == config.GetHost() || domain == config.GetAccountDomain())
-
-	if localhost {
-		// Check for a cached instance domains count, if so return this.
-		if n := i.state.Caches.DB.LocalInstance.Domains.Load(); n != nil {
-			return *n, nil
-		}
+func (i *instanceDB) CountInstancePeers(ctx context.Context) (int, error) {
+	// Check for a cached instance peers count. If present return this.
+	if n := i.state.Caches.DB.LocalInstance.Peers.Load(); n != nil {
+		return *n, nil
 	}
 
-	q := i.db.
+	// Select just the domain
+	// part of all known instances.
+	domains := []string{}
+	if err := i.db.
 		NewSelect().
-		TableExpr("? AS ?", bun.Ident("instances"), bun.Ident("instance"))
-
-	if localhost {
-		// if the domain is *this* domain, just count other instances it knows about
-		// exclude domains that are blocked
-		q = q.
-			Where("? != ?", bun.Ident("instance.domain"), domain).
-			Where("? IS NULL", bun.Ident("instance.suspended_at"))
-	} else {
-		// TODO: implement federated domain counting properly for remote domains
-		return 0, nil
-	}
-
-	count, err := q.Count(ctx)
-	if err != nil {
+		Table("instances").
+		Column("domain").
+		Scan(ctx, &domains); err != nil {
 		return 0, err
 	}
 
-	if localhost {
-		// Update cached instance domains account value.
-		i.state.Caches.DB.LocalInstance.Domains.Store(&count)
+	var count int
+	for _, domain := range domains {
+		// For each domain, check if
+		// we're federating with it.
+		blocked, err := i.state.DB.IsDomainBlocked(ctx, domain)
+		if err != nil {
+			return 0, gtserror.Newf("db error checking block: %w", err)
+		}
+
+		if blocked {
+			// Doesn't count as a
+			// peer if it's blocked.
+			continue
+		}
+
+		// Count as a peer.
+		count++
 	}
 
+	// Update cached instance peers count value.
+	i.state.Caches.DB.LocalInstance.Peers.Store(&count)
 	return count, nil
 }
 
-func (i *instanceDB) GetInstance(ctx context.Context, domain string) (*gtsmodel.Instance, error) {
-	var err error
+func (i *instanceDB) GetInstancePeers(ctx context.Context, includeSuspended bool) ([]*gtsmodel.Instance, error) {
+	// Select just the domain
+	// part of all known instances.
+	domains := []string{}
+	if err := i.db.
+		NewSelect().
+		Table("instances").
+		Column("domain").
+		Scan(ctx, &domains); err != nil {
+		return nil, err
+	}
 
-	// Normalize the domain as punycode
+	if len(domains) == 0 {
+		// Empty response.
+		return make([]*gtsmodel.Instance, 0), nil
+	}
+
+	instances := make([]*gtsmodel.Instance, 0, len(domains))
+	for _, domain := range domains {
+		if !includeSuspended {
+			// Ensure peer not blocked.
+			blocked, err := i.state.DB.IsDomainBlocked(ctx, domain)
+			if err != nil {
+				return nil, gtserror.Newf("db error checking block: %w", err)
+			}
+
+			if blocked {
+				// Skip this one.
+				continue
+			}
+		}
+
+		// Select instance.
+		instance, err := i.GetInstance(ctx, domain)
+		if err != nil {
+			log.Errorf(ctx, "db error getting instance %q: %v", domain, err)
+			continue
+		}
+
+		// Append to return slice.
+		instances = append(instances, instance)
+	}
+
+	return instances, nil
+}
+
+func (i *instanceDB) GetInstance(ctx context.Context, domain string) (*gtsmodel.Instance, error) {
+	// Normalize the domain as punycode.
+	var err error
 	domain, err = util.Punify(domain)
 	if err != nil {
 		return nil, gtserror.Newf("error punifying domain %s: %w", domain, err)
 	}
 
 	return i.getInstance(
-		ctx,
 		"Domain",
 		func(instance *gtsmodel.Instance) error {
 			return i.db.NewSelect().
@@ -189,7 +203,6 @@ func (i *instanceDB) GetInstance(ctx context.Context, domain string) (*gtsmodel.
 
 func (i *instanceDB) GetInstanceByID(ctx context.Context, id string) (*gtsmodel.Instance, error) {
 	return i.getInstance(
-		ctx,
 		"ID",
 		func(instance *gtsmodel.Instance) error {
 			return i.db.NewSelect().
@@ -201,81 +214,161 @@ func (i *instanceDB) GetInstanceByID(ctx context.Context, id string) (*gtsmodel.
 	)
 }
 
-func (i *instanceDB) getInstance(ctx context.Context, lookup string, dbQuery func(*gtsmodel.Instance) error, keyParts ...any) (*gtsmodel.Instance, error) {
-	// Fetch instance from database cache with loader callback
-	instance, err := i.state.Caches.DB.Instance.LoadOne(lookup, func() (*gtsmodel.Instance, error) {
-		var instance gtsmodel.Instance
+func (i *instanceDB) GetInstancesPage(
+	ctx context.Context,
+	page *paging.Page,
+	domain string,
+	orderBy gtsmodel.InstanceOrderBy,
+	undeliverableOnly bool,
+) ([]*gtsmodel.Instance, error) {
+	var (
+		// Extract page params.
+		minID = page.Min.Value
+		maxID = page.Max.Value
+		limit = page.Limit
+		order = page.Order()
 
+		// Pre-allocate slice of IDs.
+		instanceIDs = make([]string, 0, limit)
+
+		// We know orderBy is either Latest or Alphabetical.
+		orderByAlphabetical = orderBy == gtsmodel.InstanceOrderByAlphabetical
+	)
+
+	q := i.db.
+		NewSelect().
+		// Select just the ID
+		// of each instance.
+		Column("instance.id").
+		TableExpr("? AS ?", bun.Ident("instances"), bun.Ident("instance"))
+
+	if undeliverableOnly {
+		q = q.Where("? IS NOT NULL", bun.Ident("instance.delivery_errors_count"))
+	}
+
+	if domain != "" {
+		// Normalize the
+		// domain as punycode.
+		var err error
+		domain, err = util.Punify(domain)
+		if err != nil {
+			return nil, gtserror.Newf("error punifying domain %s: %w", domain, err)
+		}
+
+		// Get any instances *starting with* the given domain.
+		q = q.Where("? LIKE ?", bun.Ident("instance.domain"), domain+"%")
+	}
+
+	// Paging parameters.
+
+	if maxID != "" {
+		if orderByAlphabetical {
+			// Get instance for max ID.
+			maxIDInstance, err := i.GetInstanceByID(
+				gtscontext.SetBarebones(ctx),
+				maxID,
+			)
+			if err != nil {
+				err := gtserror.Newf("db error getting maxID instance %s: %w", maxID, err)
+				return nil, err
+			}
+			// Order alpahetically (a-z) by domain.
+			q = q.Where("? > ?", bun.Ident("instance.domain"), maxIDInstance.Domain)
+		} else {
+			// Order by ID, which indicates creation time.
+			q = q.Where("? < ?", bun.Ident("instance.id"), maxID)
+		}
+	}
+
+	if minID != "" {
+		if orderByAlphabetical {
+			// Get instance for min ID.
+			minIDInstance, err := i.GetInstanceByID(
+				gtscontext.SetBarebones(ctx),
+				minID,
+			)
+			if err != nil {
+				err := gtserror.Newf("db error getting minID instance %s: %w", minID, err)
+				return nil, err
+			}
+			// Order alpahetically (a-z) by domain.
+			q = q.Where("? < ?", bun.Ident("instance.domain"), minIDInstance.Domain)
+		} else {
+			// Order by ID, which indicates creation time.
+			q = q.Where("? > ?", bun.Ident("instance.id"), minID)
+		}
+	}
+
+	switch {
+	case !orderByAlphabetical && order == paging.OrderDescending:
+		// Order by ID (paging down).
+		q = q.Order("instance.id DESC")
+
+	case !orderByAlphabetical && order == paging.OrderAscending:
+		// Order by ID (paging up).
+		q = q.Order("instance.id ASC")
+
+	case orderByAlphabetical && order == paging.OrderDescending:
+		// Order alphabetically (paging down).
+		// Z > A in ASCII so use ASC.
+		q = q.Order("instance.domain ASC")
+
+	case orderByAlphabetical && order == paging.OrderAscending:
+		// Order alphabetically (paging up).
+		// A < Z in ASCII so use DESC.
+		q = q.Order("instance.domain DESC")
+	}
+
+	// Limit amount of
+	// instances returned.
+	q = q.Limit(limit)
+
+	// Run the query.
+	if err := q.Scan(ctx, &instanceIDs); err != nil {
+		return nil, err
+	}
+
+	count := len(instanceIDs)
+	if count == 0 {
+		// Nothing for
+		// this query.
+		return nil, nil
+	}
+
+	// Preallocate slice of instances,
+	// and fetch each instance by ID.
+	instances := make([]*gtsmodel.Instance, 0, count)
+	for _, instanceID := range instanceIDs {
+		instance, err := i.GetInstanceByID(ctx, instanceID)
+		if err != nil {
+			err := gtserror.Newf("db error getting instance: %w", err)
+			return nil, err
+		}
+		instances = append(instances, instance)
+	}
+	return instances, nil
+}
+
+func (i *instanceDB) getInstance(
+	lookup string,
+	dbQuery func(*gtsmodel.Instance) error, keyParts ...any,
+) (*gtsmodel.Instance, error) {
+	// Fetch instance from database cache with loader callback
+	return i.state.Caches.DB.Instance.LoadOne(lookup, func() (*gtsmodel.Instance, error) {
 		// Not cached! Perform database query.
+		var instance gtsmodel.Instance
 		if err := dbQuery(&instance); err != nil {
 			return nil, err
 		}
 
-		if instance.Domain == config.GetHost() {
-			// also populate Rules
-			rules, err := i.state.DB.GetActiveRules(ctx)
-			if err != nil {
-				log.Error(ctx, err)
-			} else {
-				instance.Rules = rules
-			}
-		}
-
 		return &instance, nil
 	}, keyParts...)
-	if err != nil {
-		return nil, err
-	}
-
-	if gtscontext.Barebones(ctx) {
-		// no need to fully populate.
-		return instance, nil
-	}
-
-	// Further populate the instance fields where applicable.
-	if err := i.PopulateInstance(ctx, instance); err != nil {
-		return nil, err
-	}
-
-	return instance, nil
-}
-
-func (i *instanceDB) PopulateInstance(ctx context.Context, instance *gtsmodel.Instance) error {
-	var (
-		err  error
-		errs = gtserror.NewMultiError(2)
-	)
-
-	if instance.DomainBlockID != "" && instance.DomainBlock == nil {
-		// Instance domain block is not set, fetch from database.
-		instance.DomainBlock, err = i.state.DB.GetDomainBlock(
-			gtscontext.SetBarebones(ctx),
-			instance.Domain,
-		)
-		if err != nil {
-			errs.Appendf("error populating instance domain block: %w", err)
-		}
-	}
-
-	if instance.ContactAccountID != "" && instance.ContactAccount == nil {
-		// Instance domain block is not set, fetch from database.
-		instance.ContactAccount, err = i.state.DB.GetAccountByID(
-			gtscontext.SetBarebones(ctx),
-			instance.ContactAccountID,
-		)
-		if err != nil {
-			errs.Appendf("error populating instance contact account: %w", err)
-		}
-	}
-
-	return errs.Combine()
 }
 
 func (i *instanceDB) PutInstance(ctx context.Context, instance *gtsmodel.Instance) error {
-	var err error
-
 	// Normalize the domain as punycode, note the extra
 	// validation step for domain name write operations.
+	var err error
 	instance.Domain, err = util.PunifySafely(instance.Domain)
 	if err != nil {
 		return gtserror.Newf("error punifying domain %s: %w", instance.Domain, err)
@@ -288,71 +381,112 @@ func (i *instanceDB) PutInstance(ctx context.Context, instance *gtsmodel.Instanc
 	})
 }
 
-func (i *instanceDB) UpdateInstance(ctx context.Context, instance *gtsmodel.Instance, columns ...string) error {
-	var err error
+func (i *instanceDB) AddInstanceDeliveryError(
+	ctx context.Context,
+	domain string,
+	errMsg string,
+) error {
+	// Lock to avoid overlapping
+	// attempts to set/clear errors.
+	i.Lock()
+	defer i.Unlock()
 
-	// Normalize the domain as punycode, note the extra
-	// validation step for domain name write operations.
-	instance.Domain, err = util.PunifySafely(instance.Domain)
-	if err != nil {
-		return gtserror.Newf("error punifying domain %s: %w", instance.Domain, err)
+	// Fetch instance with the given domain.
+	instance, err := i.GetInstance(ctx, domain)
+	if err != nil && !errors.Is(err, db.ErrNoEntries) {
+		return gtserror.Newf("db error getting instance: %w", err)
 	}
 
-	// Update the instance's last-updated
-	instance.UpdatedAt = time.Now()
-	if len(columns) != 0 {
-		columns = append(columns, "updated_at")
+	if instance == nil {
+		// No entry so
+		// nothing to do.
+		return nil
 	}
 
+	// Increment error count, avoiding overflow.
+	if instance.DeliveryErrorsCount != math.MaxInt16 {
+		instance.DeliveryErrorsCount++
+	}
+
+	// Prepare the instance delivery error
+	// to append to the instance entry.
+	ide := gtsmodel.InstanceDeliveryError{
+		Error: errMsg,
+		Time:  time.Now(),
+	}
+
+	errLength := len(instance.DeliveryErrors)
+	if errLength == 0 {
+		// Create new slice.
+		instance.DeliveryErrors = []gtsmodel.InstanceDeliveryError{ide}
+	} else {
+		// Prepend this error entry.
+		instance.DeliveryErrors = slices.Insert(instance.DeliveryErrors, 0, ide)
+	}
+
+	// Trim stored errors to sensible
+	// amount to avoid storing loads
+	// of the same error in the db.
+	const maxErrsLength = 20
+	if errLength > maxErrsLength {
+		instance.DeliveryErrors = instance.DeliveryErrors[:maxErrsLength]
+	}
+
+	// Update the instance entry.
 	return i.state.Caches.DB.Instance.Store(instance, func() error {
 		_, err := i.db.
 			NewUpdate().
 			Model(instance).
 			Where("? = ?", bun.Ident("instance.id"), instance.ID).
-			Column(columns...).
+			Column(
+				"delivery_errors_count",
+				"delivery_errors",
+			).
 			Exec(ctx)
 		return err
 	})
 }
 
-func (i *instanceDB) GetInstancePeers(ctx context.Context, includeSuspended bool) ([]*gtsmodel.Instance, error) {
-	instanceIDs := []string{}
+func (i *instanceDB) SetInstanceSuccessfulDelivery(
+	ctx context.Context,
+	domain string,
+) error {
+	// Lock to avoid overlapping
+	// attempts to set/clear errors.
+	i.Lock()
+	defer i.Unlock()
 
-	q := i.db.
-		NewSelect().
-		TableExpr("? AS ?", bun.Ident("instances"), bun.Ident("instance")).
-		// Select just the IDs of each instance.
-		Column("instance.id").
-		// Exclude our own instance.
-		Where("? != ?", bun.Ident("instance.domain"), config.GetHost())
-
-	if !includeSuspended {
-		q = q.Where("? IS NULL", bun.Ident("instance.suspended_at"))
+	// Fetch instance with the given domain.
+	instance, err := i.GetInstance(ctx, domain)
+	if err != nil && !errors.Is(err, db.ErrNoEntries) {
+		return gtserror.Newf("db error getting instance: %w", err)
 	}
 
-	if err := q.Scan(ctx, &instanceIDs); err != nil {
-		return nil, err
+	if instance == nil {
+		// No entry so
+		// nothing to do.
+		return nil
 	}
 
-	if len(instanceIDs) == 0 {
-		return make([]*gtsmodel.Instance, 0), nil
-	}
+	// Set successful delivery.
+	instance.LatestSuccessfulDelivery = time.Now()
+	instance.DeliveryErrorsCount = 0
+	instance.DeliveryErrors = nil
 
-	instances := make([]*gtsmodel.Instance, 0, len(instanceIDs))
-
-	for _, id := range instanceIDs {
-		// Select each instance by its ID.
-		instance, err := i.GetInstanceByID(ctx, id)
-		if err != nil {
-			log.Errorf(ctx, "error getting instance %q: %v", id, err)
-			continue
-		}
-
-		// Append to return slice.
-		instances = append(instances, instance)
-	}
-
-	return instances, nil
+	// Update the instance entry.
+	return i.state.Caches.DB.Instance.Store(instance, func() error {
+		_, err := i.db.
+			NewUpdate().
+			Model(instance).
+			Where("? = ?", bun.Ident("instance.id"), instance.ID).
+			Column(
+				"latest_successful_delivery",
+				"delivery_errors_count",
+				"delivery_errors",
+			).
+			Exec(ctx)
+		return err
+	})
 }
 
 func (i *instanceDB) GetInstanceAccounts(ctx context.Context, domain string, maxID string, limit int) ([]*gtsmodel.Account, error) {

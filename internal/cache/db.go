@@ -161,10 +161,11 @@ type DBCaches struct {
 	// LocalInstance provides caching for
 	// simple + common local instance queries.
 	LocalInstance struct {
-		Domains  atomic.Pointer[int]
+		Peers    atomic.Pointer[int]
 		Statuses atomic.Pointer[int]
-		Users    atomic.Pointer[int]
+		Accounts atomic.Pointer[int]
 		UserIDs  atomic.Pointer[[]string]
+		Settings atomic.Pointer[gtsmodel.InstanceSettings]
 	}
 
 	// InteractionRequest provides access to the gtsmodel InteractionRequest database cache.
@@ -963,13 +964,6 @@ func (c *Caches) initInstance() {
 	copyF := func(i1 *gtsmodel.Instance) *gtsmodel.Instance {
 		i2 := new(gtsmodel.Instance)
 		*i2 = *i1
-
-		// Don't include ptr fields that
-		// will be populated separately.
-		// See internal/db/bundb/instance.go.
-		i2.DomainBlock = nil
-		i2.ContactAccount = nil
-
 		return i2
 	}
 

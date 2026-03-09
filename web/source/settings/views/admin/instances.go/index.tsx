@@ -18,11 +18,18 @@
 */
 
 import React from "react";
-import { Link } from "wouter";
+import { InstancesSearchForm } from "./search";
 
-export default function BackButton({ to }) {
-	const backLocation: string = history.state?.backLocation ?? to;
+export default function InstancesSearch({ }) {
 	return (
-		<Link className="button" to={backLocation}>&lt; back</Link>
+		<div className="instances-view">
+			<div className="form-section-docs">
+				<h1>Instances Search</h1>
+				<p>
+					On this screen you can browse and search within the list of remote instances known to your instance.
+				</p>
+			</div>
+			<InstancesSearchForm />
+		</div>
 	);
 }

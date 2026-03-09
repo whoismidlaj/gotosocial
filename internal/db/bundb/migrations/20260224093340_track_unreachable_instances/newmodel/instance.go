@@ -15,12 +15,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package trans
+package gtsmodel
 
-// Instance represents an instance
-// entry as serialized in an export file.
+import "time"
+
 type Instance struct {
-	Type   Type   `json:"type" bun:"-"`
-	ID     string `json:"id" bun:",nullzero"`
-	Domain string `json:"domain" bun:",nullzero"`
+	ID                       string                  `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
+	Domain                   string                  `bun:",nullzero,notnull,unique"`
+	Software                 string                  `bun:",nullzero"`
+	LatestSuccessfulDelivery time.Time               `bun:"type:timestamptz,nullzero"`
+	DeliveryErrors           []InstanceDeliveryError `bun:"type:jsonb,nullzero"`
+	DeliveryErrorsCount      int16                   `bun:",nullzero"`
+}
+
+type InstanceDeliveryError struct {
+	Error string    `json:"err"`
+	Time  time.Time `json:"time"`
 }

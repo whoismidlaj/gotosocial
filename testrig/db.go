@@ -65,6 +65,7 @@ var testModels = []interface{}{
 	&gtsmodel.WebPushSubscription{},
 	&gtsmodel.Emoji{},
 	&gtsmodel.Instance{},
+	&gtsmodel.InstanceSettings{},
 	&gtsmodel.Notification{},
 	&gtsmodel.RouterSession{},
 	&gtsmodel.Token{},
@@ -370,11 +371,7 @@ func StandardDBSetup(db db.DB, accounts map[string]*gtsmodel.Account) {
 		}
 	}
 
-	if err := db.CreateInstanceAccount(ctx); err != nil {
-		log.Panic(ctx, err)
-	}
-
-	if err := db.CreateInstanceInstance(ctx); err != nil {
+	if err := db.Put(ctx, NewTestInstanceSettings()); err != nil {
 		log.Panic(ctx, err)
 	}
 

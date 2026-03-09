@@ -23,23 +23,12 @@ import (
 
 	apiutil "code.superseriousbusiness.org/gotosocial/internal/api/util"
 	"code.superseriousbusiness.org/gotosocial/internal/gtserror"
-	"code.superseriousbusiness.org/gotosocial/internal/paging"
 	"github.com/gin-gonic/gin"
 )
 
-// DomainPermissionExcludesGETHandler swagger:operation GET /api/v1/admin/domain_permission_excludes domainPermissionExcludesGet
+// InstanceGETHandler swagger:operation GET /api/v1/admin/instances/{id} adminInstanceGet
 //
-// View domain permission excludes.
-//
-// The excludes will be returned in descending chronological order (newest first), with sequential IDs (bigger = newer).
-//
-// The next and previous queries can be parsed from the returned Link header.
-//
-// Example:
-//
-// ```
-// <https://example.org/api/v1/admin/domain_permission_excludes?limit=20&max_id=01FC0SKA48HNSVR6YKZCQGS2V8>; rel="next", <https://example.org/api/v1/admin/domain_permission_excludes?limit=20&min_id=01FC0SKW5JK2Q4EVAV2B462YY0>; rel="prev"
-// ````
+// Show admin view of one instance.
 //
 //	---
 //	tags:
@@ -50,55 +39,22 @@ import (
 //
 //	parameters:
 //	-
-//		name: domain
+//		name: id
 //		type: string
-//		description: Return only excludes that target the given domain.
-//		in: query
-//	-
-//		name: max_id
-//		type: string
-//		description: >-
-//			Return only items *OLDER* than the given max ID (for paging downwards).
-//			The item with the specified ID will not be included in the response.
-//		in: query
-//	-
-//		name: since_id
-//		type: string
-//		description: >-
-//			Return only items *NEWER* than the given since ID.
-//			The item with the specified ID will not be included in the response.
-//		in: query
-//	-
-//		name: min_id
-//		type: string
-//		description: >-
-//			Return only items immediately *NEWER* than the given min ID (for paging upwards).
-//			The item with the specified ID will not be included in the response.
-//		in: query
-//	-
-//		name: limit
-//		type: integer
-//		description: Number of items to return.
-//		default: 20
-//		minimum: 1
-//		maximum: 100
-//		in: query
+//		description: The id of the instance.
+//		in: path
+//		required: true
 //
 //	security:
 //	- OAuth2 Bearer:
-//		- admin:read
+//		- admin:read:instances
 //
 //	responses:
 //		'200':
-//			description: Domain permission excludes.
+//			name: instances
+//			description: Admin model instance.
 //			schema:
-//				type: array
-//				items:
-//					"$ref": "#/definitions/domainPermission"
-//			headers:
-//				Link:
-//					type: string
-//					description: Links to the next and previous queries.
+//				"$ref": "#/definitions/adminInstance"
 //		'400':
 //			schema:
 //				"$ref": "#/definitions/error"
@@ -107,10 +63,6 @@ import (
 //			schema:
 //				"$ref": "#/definitions/error"
 //			description: unauthorized
-//		'403':
-//			schema:
-//				"$ref": "#/definitions/error"
-//			description: forbidden
 //		'404':
 //			schema:
 //				"$ref": "#/definitions/error"
@@ -123,10 +75,10 @@ import (
 //			schema:
 //				"$ref": "#/definitions/error"
 //			description: internal server error
-func (m *Module) DomainPermissionExcludesGETHandler(c *gin.Context) {
+func (m *Module) InstanceGETHandler(c *gin.Context) {
 	authed, errWithCode := apiutil.TokenAuth(c,
 		true, true, true, true,
-		apiutil.ScopeAdminRead,
+		apiutil.ScopeAdminReadInstances,
 	)
 	if errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
@@ -139,35 +91,25 @@ func (m *Module) DomainPermissionExcludesGETHandler(c *gin.Context) {
 		return
 	}
 
-	if authed.Account.IsMoving() {
-		apiutil.ForbiddenAfterMove(c)
-		return
-	}
-
 	if _, errWithCode := apiutil.NegotiateAccept(c, apiutil.JSONAcceptHeaders...); errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
 		return
 	}
 
-	page, errWithCode := paging.ParseIDPage(c, 1, 200, 20)
+	id, errWithCode := apiutil.ParseID(c.Param(apiutil.IDKey))
 	if errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
 		return
 	}
 
-	resp, errWithCode := m.processor.Admin().DomainPermissionExcludesGet(
+	resp, errWithCode := m.processor.Admin().InstanceGet(
 		c.Request.Context(),
-		c.Query(apiutil.DomainKey),
-		page,
+		id,
 	)
 	if errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
 		return
 	}
 
-	if resp.LinkHeader != "" {
-		c.Header("Link", resp.LinkHeader)
-	}
-
-	apiutil.JSON(c, http.StatusOK, resp.Items)
+	apiutil.JSON(c, http.StatusOK, resp)
 }

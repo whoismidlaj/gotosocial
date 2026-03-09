@@ -15,12 +15,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package trans
+package gtsmodel
 
-// Instance represents an instance
-// entry as serialized in an export file.
-type Instance struct {
-	Type   Type   `json:"type" bun:"-"`
-	ID     string `json:"id" bun:",nullzero"`
-	Domain string `json:"domain" bun:",nullzero"`
+type InstanceSettings struct {
+	ID                     string `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
+	Title                  string `bun:""`
+	ShortDescription       string `bun:""`
+	ShortDescriptionText   string `bun:""`
+	Description            string `bun:""`
+	DescriptionText        string `bun:""`
+	CustomCSS              string `bun:",nullzero"`
+	Terms                  string `bun:""`
+	TermsText              string `bun:""`
+	ContactEmail           string `bun:""`
+	ContactAccountUsername string `bun:",nullzero"`
+	ContactAccountID       string `bun:"type:CHAR(26),nullzero"`
 }

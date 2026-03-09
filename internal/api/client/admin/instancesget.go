@@ -18,7 +18,6 @@
 package admin
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -29,18 +28,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// DomainPermissionDraftsGETHandler swagger:operation GET /api/v1/admin/domain_permission_drafts domainPermissionDraftsGet
+// InstancesGETHandler swagger:operation GET /api/v1/admin/instances adminInstances
 //
-// View domain permission drafts.
+// Show admin view of instances.
 //
-// The drafts will be returned in descending chronological order (newest first), with sequential IDs (bigger = newer).
+// The instances will be returned in descending chronological order (newest first), with sequential IDs (bigger = newer).
 //
 // The next and previous queries can be parsed from the returned Link header.
 //
 // Example:
 //
 // ```
-// <https://example.org/api/v1/admin/domain_permission_drafts?limit=20&max_id=01FC0SKA48HNSVR6YKZCQGS2V8>; rel="next", <https://example.org/api/v1/admin/domain_permission_drafts?limit=20&min_id=01FC0SKW5JK2Q4EVAV2B462YY0>; rel="prev"
+// <https://example.org/api/v1/admin/instances?limit=40&max_id=01FC0SKA48HNSVR6YKZCQGS2V8>; rel="next", <https://example.org/api/v1/admin/instances?limit=40&min_id=01FC0SKW5JK2Q4EVAV2B462YY0>; rel="prev"
 // ````
 //
 //	---
@@ -52,20 +51,22 @@ import (
 //
 //	parameters:
 //	-
-//		name: subscription_id
-//		type: string
-//		description: Show only drafts created by the given subscription ID.
-//		in: query
-//	-
 //		name: domain
-//		type: string
-//		description: Return only drafts that target the given domain.
 //		in: query
+//		type: string
+//		description: Filter by the given domain.
 //	-
-//		name: permission_type
-//		type: string
-//		description: Filter on "block" or "allow" type drafts.
+//		name: order
 //		in: query
+//		type: string
+//		description: Order by default "first_seen" (newest -> oldest) or "alphabetical" (a -> z).
+//		default: latest
+//	-
+//		name: with_errors_only
+//		in: query
+//		type: boolean
+//		description: Only include instances that have one or more delivery errors since the last successful delivery.
+//		default: false
 //	-
 //		name: max_id
 //		type: string
@@ -91,22 +92,23 @@ import (
 //		name: limit
 //		type: integer
 //		description: Number of items to return.
-//		default: 20
+//		default: 40
 //		minimum: 1
 //		maximum: 100
 //		in: query
 //
 //	security:
 //	- OAuth2 Bearer:
-//		- admin:read
+//		- admin:read:instances
 //
 //	responses:
 //		'200':
-//			description: Domain permission drafts.
+//			name: instances
+//			description: Array of admin model instances.
 //			schema:
 //				type: array
 //				items:
-//					"$ref": "#/definitions/domainPermission"
+//					"$ref": "#/definitions/adminInstance"
 //			headers:
 //				Link:
 //					type: string
@@ -119,10 +121,6 @@ import (
 //			schema:
 //				"$ref": "#/definitions/error"
 //			description: unauthorized
-//		'403':
-//			schema:
-//				"$ref": "#/definitions/error"
-//			description: forbidden
 //		'404':
 //			schema:
 //				"$ref": "#/definitions/error"
@@ -135,10 +133,10 @@ import (
 //			schema:
 //				"$ref": "#/definitions/error"
 //			description: internal server error
-func (m *Module) DomainPermissionDraftsGETHandler(c *gin.Context) {
+func (m *Module) InstancesGETHandler(c *gin.Context) {
 	authed, errWithCode := apiutil.TokenAuth(c,
 		true, true, true, true,
-		apiutil.ScopeAdminRead,
+		apiutil.ScopeAdminReadInstances,
 	)
 	if errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
@@ -151,40 +149,45 @@ func (m *Module) DomainPermissionDraftsGETHandler(c *gin.Context) {
 		return
 	}
 
-	if authed.Account.IsMoving() {
-		apiutil.ForbiddenAfterMove(c)
-		return
-	}
-
 	if _, errWithCode := apiutil.NegotiateAccept(c, apiutil.JSONAcceptHeaders...); errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
 		return
 	}
 
-	permTypeStr := c.Query(apiutil.DomainPermissionPermTypeKey)
-	permType := gtsmodel.ParseDomainPermissionType(permTypeStr)
-	if permTypeStr != "" && permType == gtsmodel.DomainPermissionUnknown {
-		text := fmt.Sprintf(
-			"permission_type %s not recognized, valid values are empty string, block, or allow",
-			permTypeStr,
-		)
-		errWithCode := gtserror.NewErrorBadRequest(errors.New(text), text)
-		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
-		return
-	}
-
-	page, errWithCode := paging.ParseIDPage(c, 1, 200, 20)
+	page, errWithCode := paging.ParseIDPage(c,
+		1,   // min limit
+		100, // max limit
+		40,  // default limit
+	)
 	if errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
 		return
 	}
 
-	resp, errWithCode := m.processor.Admin().DomainPermissionDraftsGet(
+	orderBy, errWithCode := apiutil.ParseInstancesOrder(
+		c.Query(apiutil.OrderKey),
+		gtsmodel.InstanceOrderByFirstSeen,
+	)
+	if errWithCode != nil {
+		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
+		return
+	}
+
+	withErrorsOnly, errWithCode := apiutil.ParseAdminWithErrorsOnly(
+		c.Query(apiutil.AdminWithErrorsOnlyKey),
+		false,
+	)
+	if errWithCode != nil {
+		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)
+		return
+	}
+
+	resp, errWithCode := m.processor.Admin().InstancesGet(
 		c.Request.Context(),
-		c.Query(apiutil.DomainPermissionSubscriptionIDKey),
-		c.Query(apiutil.DomainKey),
-		permType,
 		page,
+		c.Query(apiutil.DomainKey),
+		orderBy,
+		withErrorsOnly,
 	)
 	if errWithCode != nil {
 		apiutil.ErrorHandler(c, errWithCode, m.processor.InstanceGetV1)

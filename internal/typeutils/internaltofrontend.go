@@ -1597,9 +1597,13 @@ func InstanceRuleToAdminAPIRule(r *gtsmodel.Rule) *apimodel.AdminInstanceRule {
 	}
 }
 
-// InstanceToAPIV1Instance converts a gts instance into its api equivalent for serving at /api/v1/instance
-func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Instance) (*apimodel.InstanceV1, error) {
-	domain := i.Domain
+// InstanceSettingsToAPIV1Instance converts our instance settings
+// into its api equivalent for serving at /api/v1/instance.
+func (c *Converter) InstanceSettingsToAPIV1Instance(
+	ctx context.Context,
+	settings *gtsmodel.InstanceSettings,
+) (*apimodel.InstanceV1, error) {
+	domain := config.GetHost()
 	accDomain := config.GetAccountDomain()
 	if accDomain != "" {
 		domain = accDomain
@@ -1608,22 +1612,22 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 	instance := &apimodel.InstanceV1{
 		URI:                  domain,
 		AccountDomain:        accDomain,
-		Title:                i.Title,
-		Description:          i.Description,
-		DescriptionText:      i.DescriptionText,
-		CustomCSS:            i.CustomCSS,
-		ShortDescription:     i.ShortDescription,
-		ShortDescriptionText: i.ShortDescriptionText,
-		Email:                i.ContactEmail,
+		Title:                settings.Title,
+		Description:          settings.Description,
+		DescriptionText:      settings.DescriptionText,
+		CustomCSS:            settings.CustomCSS,
+		ShortDescription:     settings.ShortDescription,
+		ShortDescriptionText: settings.ShortDescriptionText,
+		Email:                settings.ContactEmail,
 		Version:              config.GetSoftwareVersion(),
 		Languages:            config.GetInstanceLanguages().TagStrs(),
 		Registrations:        config.GetAccountsRegistrationOpen(),
 		ApprovalRequired:     true,                               // approval always required
 		InvitesEnabled:       false,                              // todo: not supported yet
 		MaxTootChars:         uint(config.GetStatusesMaxChars()), // #nosec G115 -- Already validated.
-		Rules:                InstanceRulesToAPIRules(i.Rules),
-		Terms:                i.Terms,
-		TermsRaw:             i.TermsText,
+		Rules:                InstanceRulesToAPIRules(settings.Rules),
+		Terms:                settings.Terms,
+		TermsRaw:             settings.TermsText,
 	}
 
 	if config.GetInstanceInjectMastodonVersion() {
@@ -1634,7 +1638,7 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 		instance.Debug = util.Ptr(true)
 	}
 
-	// configuration
+	// Instance configuration.
 	instance.Configuration.Statuses.MaxCharacters = config.GetStatusesMaxChars()
 	instance.Configuration.Statuses.MaxMediaAttachments = config.GetStatusesMediaMaxFiles()
 	instance.Configuration.Statuses.CharactersReservedPerURL = instanceStatusesCharactersReservedPerURL
@@ -1653,7 +1657,7 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 	instance.Configuration.MediaAttachments.ImageSizeLimit = int(imageSz) // #nosec G115 -- Already validated.
 	instance.Configuration.MediaAttachments.VideoSizeLimit = int(videoSz) // #nosec G115 -- Already validated.
 
-	// we don't actually set any limits on these. set to max possible.
+	// We don't actually set any limits on these. Set to max possible.
 	instance.Configuration.MediaAttachments.ImageMatrixLimit = math.MaxInt32
 	instance.Configuration.MediaAttachments.VideoFrameRateLimit = math.MaxInt32
 	instance.Configuration.MediaAttachments.VideoMatrixLimit = math.MaxInt32
@@ -1669,25 +1673,25 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 	instance.Configuration.OIDCEnabled = config.GetOIDCEnabled()
 
 	// URLs
-	instance.URLs.StreamingAPI = "wss://" + i.Domain
+	instance.URLs.StreamingAPI = "wss://" + domain
 
-	// statistics
+	// Populate instance statistics.
 	stats := make(map[string]*int, 3)
-	userCount, err := c.state.DB.CountInstanceUsers(ctx, i.Domain)
+	userCount, err := c.state.DB.CountInstanceAccounts(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("InstanceToAPIV1Instance: db error getting counting instance users: %w", err)
+		return nil, gtserror.Newf("db error getting counting instance users: %w", err)
 	}
 	stats["user_count"] = util.Ptr(userCount)
 
-	statusCount, err := c.state.DB.CountInstanceStatuses(ctx, i.Domain)
+	statusCount, err := c.state.DB.CountInstanceStatuses(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("InstanceToAPIV1Instance: db error getting counting instance statuses: %w", err)
+		return nil, gtserror.Newf("db error getting counting instance statuses: %w", err)
 	}
 	stats["status_count"] = util.Ptr(statusCount)
 
-	domainCount, err := c.state.DB.CountInstanceDomains(ctx, i.Domain)
+	domainCount, err := c.state.DB.CountInstancePeers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("InstanceToAPIV1Instance: db error getting counting instance domains: %w", err)
+		return nil, gtserror.Newf("db error getting counting instance domains: %w", err)
 	}
 	stats["domain_count"] = util.Ptr(domainCount)
 	instance.Stats = stats
@@ -1698,17 +1702,19 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 		instance.RandomStats = c.RandomStats()
 	}
 
-	// thumbnail
+	// Instance thumbnail.
 	iAccount, err := c.state.DB.GetInstanceAccount(ctx, "")
 	if err != nil {
-		return nil, fmt.Errorf("InstanceToAPIV1Instance: db error getting instance account: %w", err)
+		return nil, gtserror.Newf("db error getting instance account: %w", err)
 	}
 
 	if iAccount.AvatarMediaAttachmentID != "" {
+		// Use instance account's
+		// avatar as thumbnail, if set.
 		if iAccount.AvatarMediaAttachment == nil {
 			avi, err := c.state.DB.GetAttachmentByID(ctx, iAccount.AvatarMediaAttachmentID)
 			if err != nil {
-				return nil, fmt.Errorf("InstanceToAPIInstance: error getting instance avatar attachment with id %s: %w", iAccount.AvatarMediaAttachmentID, err)
+				return nil, gtserror.Newf("error getting instance avatar attachment: %w", err)
 			}
 			iAccount.AvatarMediaAttachment = avi
 		}
@@ -1719,22 +1725,23 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 		instance.ThumbnailStaticType = iAccount.AvatarMediaAttachment.Thumbnail.ContentType
 		instance.ThumbnailDescription = iAccount.AvatarMediaAttachment.Description
 	} else {
-		instance.Thumbnail = config.GetProtocol() + "://" + i.Domain + "/assets/logo.webp" // default thumb
+		// Fall back to default thumbnail.
+		instance.Thumbnail = config.GetProtocol() + "://" + domain + "/assets/logo.webp"
 	}
 
-	// contact account
-	if i.ContactAccountID != "" {
-		if i.ContactAccount == nil {
-			contactAccount, err := c.state.DB.GetAccountByID(ctx, i.ContactAccountID)
+	// Contact account, if set.
+	if settings.ContactAccountID != "" {
+		if settings.ContactAccount == nil {
+			contactAccount, err := c.state.DB.GetAccountByID(ctx, settings.ContactAccountID)
 			if err != nil {
-				return nil, fmt.Errorf("InstanceToAPIV1Instance: db error getting instance contact account %s: %w", i.ContactAccountID, err)
+				return nil, gtserror.Newf("db error getting instance contact account: %w", err)
 			}
-			i.ContactAccount = contactAccount
+			settings.ContactAccount = contactAccount
 		}
 
-		account, err := c.AccountToAPIAccountPublic(ctx, i.ContactAccount)
+		account, err := c.AccountToAPIAccountPublic(ctx, settings.ContactAccount)
 		if err != nil {
-			return nil, fmt.Errorf("InstanceToAPIV1Instance: error converting instance contact account %s: %w", i.ContactAccountID, err)
+			return nil, gtserror.Newf("error converting instance contact account: %w", err)
 		}
 		instance.ContactAccount = account
 	}
@@ -1742,9 +1749,13 @@ func (c *Converter) InstanceToAPIV1Instance(ctx context.Context, i *gtsmodel.Ins
 	return instance, nil
 }
 
-// InstanceToAPIV2Instance converts a gts instance into its api equivalent for serving at /api/v2/instance
-func (c *Converter) InstanceToAPIV2Instance(ctx context.Context, i *gtsmodel.Instance) (*apimodel.InstanceV2, error) {
-	domain := i.Domain
+// InstanceSettingsToAPIV2Instance converts our instance settings
+// into its api equivalent for serving at /api/v2/instance.
+func (c *Converter) InstanceSettingsToAPIV2Instance(
+	ctx context.Context,
+	settings *gtsmodel.InstanceSettings,
+) (*apimodel.InstanceV2, error) {
+	domain := config.GetHost()
 	accDomain := config.GetAccountDomain()
 	if accDomain != "" {
 		domain = accDomain
@@ -1753,17 +1764,17 @@ func (c *Converter) InstanceToAPIV2Instance(ctx context.Context, i *gtsmodel.Ins
 	instance := &apimodel.InstanceV2{
 		Domain:          domain,
 		AccountDomain:   accDomain,
-		Title:           i.Title,
+		Title:           settings.Title,
 		Version:         config.GetSoftwareVersion(),
 		SourceURL:       instanceSourceURL,
-		Description:     i.Description,
-		DescriptionText: i.DescriptionText,
-		CustomCSS:       i.CustomCSS,
+		Description:     settings.Description,
+		DescriptionText: settings.DescriptionText,
+		CustomCSS:       settings.CustomCSS,
 		Usage:           apimodel.InstanceV2Usage{}, // todo: not implemented
 		Languages:       config.GetInstanceLanguages().TagStrs(),
-		Rules:           InstanceRulesToAPIRules(i.Rules),
-		Terms:           i.Terms,
-		TermsText:       i.TermsText,
+		Rules:           InstanceRulesToAPIRules(settings.Rules),
+		Terms:           settings.Terms,
+		TermsText:       settings.TermsText,
 	}
 
 	if config.GetInstanceInjectMastodonVersion() {
@@ -1780,40 +1791,39 @@ func (c *Converter) InstanceToAPIV2Instance(ctx context.Context, i *gtsmodel.Ins
 		instance.RandomStats = c.RandomStats()
 	}
 
-	// thumbnail
-	thumbnail := apimodel.InstanceV2Thumbnail{}
-
+	// Instance thumbnail.
 	iAccount, err := c.state.DB.GetInstanceAccount(ctx, "")
 	if err != nil {
-		return nil, fmt.Errorf("InstanceToAPIV2Instance: db error getting instance account: %w", err)
+		return nil, gtserror.Newf("db error getting instance account: %w", err)
 	}
 
 	if iAccount.AvatarMediaAttachmentID != "" {
+		// Use instance account's
+		// avatar as thumbnail, if set.
 		if iAccount.AvatarMediaAttachment == nil {
 			avi, err := c.state.DB.GetAttachmentByID(ctx, iAccount.AvatarMediaAttachmentID)
 			if err != nil {
-				return nil, fmt.Errorf("InstanceToAPIV2Instance: error getting instance avatar attachment with id %s: %w", iAccount.AvatarMediaAttachmentID, err)
+				return nil, gtserror.Newf("error getting instance avatar attachment: %w", err)
 			}
 			iAccount.AvatarMediaAttachment = avi
 		}
 
-		thumbnail.URL = iAccount.AvatarMediaAttachment.URL
-		thumbnail.Type = iAccount.AvatarMediaAttachment.File.ContentType
-		thumbnail.StaticURL = iAccount.AvatarMediaAttachment.Thumbnail.URL
-		thumbnail.StaticType = iAccount.AvatarMediaAttachment.Thumbnail.ContentType
-		thumbnail.Description = iAccount.AvatarMediaAttachment.Description
-		thumbnail.Blurhash = iAccount.AvatarMediaAttachment.Blurhash
+		instance.Thumbnail.URL = iAccount.AvatarMediaAttachment.URL
+		instance.Thumbnail.Type = iAccount.AvatarMediaAttachment.File.ContentType
+		instance.Thumbnail.StaticURL = iAccount.AvatarMediaAttachment.Thumbnail.URL
+		instance.Thumbnail.StaticType = iAccount.AvatarMediaAttachment.Thumbnail.ContentType
+		instance.Thumbnail.Description = iAccount.AvatarMediaAttachment.Description
+		instance.Thumbnail.Blurhash = iAccount.AvatarMediaAttachment.Blurhash
 	} else {
-		thumbnail.URL = config.GetProtocol() + "://" + i.Domain + "/assets/logo.webp" // default thumb
+		// Fall back to default thumbnail.
+		instance.Thumbnail.URL = config.GetProtocol() + "://" + domain + "/assets/logo.webp"
 	}
 
-	instance.Thumbnail = thumbnail
+	termsOfService := config.GetProtocol() + "://" + domain + "/about#rules"
 
-	termsOfService := config.GetProtocol() + "://" + i.Domain + "/about#rules"
-
-	// configuration
-	instance.Configuration.URLs.Streaming = "wss://" + i.Domain
-	instance.Configuration.URLs.About = config.GetProtocol() + "://" + i.Domain + "/about"
+	// Instance configuration.
+	instance.Configuration.URLs.Streaming = "wss://" + domain
+	instance.Configuration.URLs.About = config.GetProtocol() + "://" + domain + "/about"
 	instance.Configuration.URLs.TermsOfService = &termsOfService
 	instance.Configuration.Statuses.MaxCharacters = config.GetStatusesMaxChars()
 	instance.Configuration.Statuses.MaxMediaAttachments = config.GetStatusesMediaMaxFiles()
@@ -1835,7 +1845,7 @@ func (c *Converter) InstanceToAPIV2Instance(ctx context.Context, i *gtsmodel.Ins
 	instance.Configuration.MediaAttachments.ImageSizeLimit = int(imageSz) // #nosec G115 -- Already validated.
 	instance.Configuration.MediaAttachments.VideoSizeLimit = int(videoSz) // #nosec G115 -- Already validated.
 
-	// we don't actually set any limits on these. set to max possible.
+	// We don't actually set any limits on these. Set to max possible.
 	instance.Configuration.MediaAttachments.ImageMatrixLimit = math.MaxInt32
 	instance.Configuration.MediaAttachments.VideoFrameRateLimit = math.MaxInt32
 	instance.Configuration.MediaAttachments.VideoMatrixLimit = math.MaxInt32
@@ -1863,20 +1873,22 @@ func (c *Converter) InstanceToAPIV2Instance(ctx context.Context, i *gtsmodel.Ins
 	instance.Registrations.MinAge = nil            // not implemented
 	instance.Registrations.ReasonRequired = config.GetAccountsReasonRequired()
 
-	// contact
-	instance.Contact.Email = i.ContactEmail
-	if i.ContactAccountID != "" {
-		if i.ContactAccount == nil {
-			contactAccount, err := c.state.DB.GetAccountByID(ctx, i.ContactAccountID)
+	// Contact email.
+	instance.Contact.Email = settings.ContactEmail
+
+	// Contact account, if set.
+	if settings.ContactAccountID != "" {
+		if settings.ContactAccount == nil {
+			contactAccount, err := c.state.DB.GetAccountByID(ctx, settings.ContactAccountID)
 			if err != nil {
-				return nil, fmt.Errorf("InstanceToAPIV2Instance: db error getting instance contact account %s: %w", i.ContactAccountID, err)
+				return nil, gtserror.Newf("db error getting instance contact account: %w", err)
 			}
-			i.ContactAccount = contactAccount
+			settings.ContactAccount = contactAccount
 		}
 
-		account, err := c.AccountToAPIAccountPublic(ctx, i.ContactAccount)
+		account, err := c.AccountToAPIAccountPublic(ctx, settings.ContactAccount)
 		if err != nil {
-			return nil, fmt.Errorf("InstanceToAPIV2Instance: error converting instance contact account %s: %w", i.ContactAccountID, err)
+			return nil, gtserror.Newf("error converting instance contact account: %w", err)
 		}
 		instance.Contact.Account = account
 	}
@@ -3222,4 +3234,44 @@ func (c *Converter) tagsToAPI(
 	}
 
 	return apiModels
+}
+
+func (c *Converter) InstanceToAdminAPIInstance(ctx context.Context, i *gtsmodel.Instance) (*apimodel.AdminInstance, error) {
+	firstSeen, err := id.TimeFromULID(i.ID)
+	if err != nil {
+		return nil, gtserror.Newf("error converting id to time: %w", err)
+	}
+
+	domain, err := util.DePunify(i.Domain)
+	if err != nil {
+		return nil, gtserror.Newf("error depunifying domain %s: %w", i.Domain, err)
+	}
+
+	var latestSuccessfulDelivery string
+	if !i.LatestSuccessfulDelivery.IsZero() {
+		latestSuccessfulDelivery = util.FormatISO8601(i.LatestSuccessfulDelivery)
+	}
+
+	deliveryErrors := make([]apimodel.AdminInstanceDeliveryError, 0)
+	for _, de := range i.DeliveryErrors {
+		deliveryErrors = append(
+			deliveryErrors,
+			apimodel.AdminInstanceDeliveryError{
+				Time:  util.FormatISO8601(de.Time),
+				Error: de.Error,
+			},
+		)
+	}
+
+	// TODO: add accounts count, statuses
+	// count, following relationships, etc.
+
+	return &apimodel.AdminInstance{
+		ID:                       i.ID,
+		Domain:                   domain,
+		Software:                 i.Software,
+		FirstSeen:                util.FormatISO8601(firstSeen),
+		LatestSuccessfulDelivery: latestSuccessfulDelivery,
+		DeliveryErrors:           deliveryErrors,
+	}, nil
 }
