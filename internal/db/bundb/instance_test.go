@@ -39,7 +39,7 @@ func (suite *InstanceTestSuite) TestCountInstanceUsers() {
 func (suite *InstanceTestSuite) TestCountInstanceStatuses() {
 	count, err := suite.db.CountInstanceStatuses(suite.T().Context())
 	suite.NoError(err)
-	suite.Equal(23, count)
+	suite.Equal(24, count)
 }
 
 func (suite *InstanceTestSuite) TestCountInstancePeers() {

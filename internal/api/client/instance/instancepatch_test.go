@@ -176,7 +176,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateInstanceInfo() {
   },
   "stats": {
     "domain_count": 4,
-    "status_count": 23,
+    "status_count": 24,
     "user_count": 5
   },
   "thumbnail": "http://localhost:8080/assets/logo.webp",
@@ -329,7 +329,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateTitleHTML() {
   },
   "stats": {
     "domain_count": 4,
-    "status_count": 23,
+    "status_count": 24,
     "user_count": 5
   },
   "thumbnail": "http://localhost:8080/assets/logo.webp",
@@ -482,7 +482,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateShortDescriptionHTML
   },
   "stats": {
     "domain_count": 4,
-    "status_count": 23,
+    "status_count": 24,
     "user_count": 5
   },
   "thumbnail": "http://localhost:8080/assets/logo.webp",
@@ -659,7 +659,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchEmptyContactEmail() {
   },
   "stats": {
     "domain_count": 4,
-    "status_count": 23,
+    "status_count": 24,
     "user_count": 5
   },
   "thumbnail": "http://localhost:8080/assets/logo.webp",
@@ -843,7 +843,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateThumbnail() {
   },
   "stats": {
     "domain_count": 4,
-    "status_count": 23,
+    "status_count": 24,
     "user_count": 5
   },
   "thumbnail": "http://localhost:8080/fileserver/01AY6P665V14JJR0AFVRT7311Y/attachment/original/`+instanceAccount.AvatarMediaAttachment.ID+`.gif",`+`
@@ -1042,7 +1042,7 @@ func (suite *InstancePatchTestSuite) TestInstancePatchUpdateThumbnailDescription
   },
   "stats": {
     "domain_count": 4,
-    "status_count": 23,
+    "status_count": 24,
     "user_count": 5
   },
   "thumbnail": "http://localhost:8080/assets/logo.webp",
