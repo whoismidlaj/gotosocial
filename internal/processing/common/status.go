@@ -214,9 +214,6 @@ func (p *Processor) GetAPIStatus(
 	apiStatus *apimodel.Status,
 	errWithCode gtserror.WithCode,
 ) {
-	// Ensure status media is cached locally.
-	p.LoadStatusMedia(ctx, requester, target)
-
 	// Convert the target status to frontend API model.
 	apiStatus, err := p.converter.StatusToAPIStatus(ctx,
 		target,
@@ -293,9 +290,6 @@ func (p *Processor) GetVisibleAPIStatuses(
 		if hide {
 			continue
 		}
-
-		// Ensure status media is cached locally.
-		p.LoadStatusMedia(ctx, requester, status)
 
 		// Not muted or "hide" filtered. Convert to API status.
 		apiStatus, err := p.converter.StatusToAPIStatus(ctx,
