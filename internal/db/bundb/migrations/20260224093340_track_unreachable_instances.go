@@ -25,7 +25,7 @@ import (
 
 	"code.superseriousbusiness.org/gopkg/log"
 	"code.superseriousbusiness.org/gotosocial/internal/config"
-	"code.superseriousbusiness.org/gotosocial/internal/db"
+	dbpkg "code.superseriousbusiness.org/gotosocial/internal/db"
 	newmodel "code.superseriousbusiness.org/gotosocial/internal/db/bundb/migrations/20260224093340_track_unreachable_instances/newmodel"
 	oldmodel "code.superseriousbusiness.org/gotosocial/internal/db/bundb/migrations/20260224093340_track_unreachable_instances/oldmodel"
 	"code.superseriousbusiness.org/gotosocial/internal/id"
@@ -34,10 +34,36 @@ import (
 )
 
 func init() {
-	up := func(ctx context.Context, bdb *bun.DB) error {
+	up := func(ctx context.Context, db *bun.DB) error {
 		log.Info(ctx, "migrating instances table, this may take a little while...")
 
-		return bdb.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		return db.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+
+			// Create federation errors table.
+			if _, err := tx.
+				NewCreateTable().
+				Model((*newmodel.FederationError)(nil)).
+				Exec(ctx); err != nil {
+				return err
+			}
+
+			// Index federation errors table.
+			//
+			// This index allows doing selects by instance ID and
+			// type, ID descending (ie., newest errors to oldest).
+			if err := createIndex(ctx, tx,
+				"federation_errors_instance_id_type_idx",
+				"federation_errors",
+				dbpkg.BunExpr{
+					"?, ?, ? DESC",
+					dbpkg.Idents(
+						"instance_id",
+						"type",
+						"id",
+					)},
+			); err != nil {
+				return err
+			}
 
 			// Create instance settings table.
 			if _, err := tx.
@@ -57,7 +83,7 @@ func init() {
 				Table("instances").
 				Where("? = ?", bun.Ident("domain"), host).
 				Scan(ctx, oldInstance)
-			if err != nil && !errors.Is(err, db.ErrNoEntries) {
+			if err != nil && !errors.Is(err, dbpkg.ErrNoEntries) {
 				return err
 			}
 
@@ -127,7 +153,7 @@ func init() {
 				NewSelect().
 				Table("instances").
 				Count(ctx)
-			if err != nil && !errors.Is(err, db.ErrNoEntries) {
+			if err != nil && !errors.Is(err, dbpkg.ErrNoEntries) {
 				return err
 			}
 
@@ -225,19 +251,6 @@ func init() {
 					bun.Ident("new_instances"),
 					bun.Ident("instances"),
 				); err != nil {
-				return err
-			}
-
-			// Add indexes to the new table.
-			log.Info(ctx, "(re)creating indexes on new instances table")
-			if _, err := tx.
-				NewCreateIndex().
-				Table("instances").
-				Index("instances_with_errors_idx").
-				Column("delivery_errors_count").
-				Where("? IS NOT NULL", bun.Ident("delivery_errors_count")).
-				IfNotExists().
-				Exec(ctx); err != nil {
 				return err
 			}
 

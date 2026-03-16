@@ -39,31 +39,10 @@ type Instance struct {
 	// to deliver a message to this instance.
 	LatestSuccessfulDelivery time.Time `bun:"type:timestamptz,nullzero"`
 
-	// If latest attempts to deliver errored,
-	// this field stores error messages.
+	// Recent delivery errors.
 	//
-	// Cleared on successful delivery.
-	DeliveryErrors []InstanceDeliveryError `bun:"type:jsonb,nullzero"`
-
-	// If latest attempts to deliver errored,
-	// this field stores the count of errors
-	// since the last successful delivery (if any).
-	DeliveryErrorsCount smallint `bun:",nullzero"`
-}
-
-// InstanceDeliveryError error models
-// an error encountered while trying
-// to deliver to a remote instance.
-type InstanceDeliveryError struct {
-	// Error contains the error message, either
-	// received from the remote instance or
-	// generated internally if the remote
-	// instance could not be reached at all.
-	Error string `json:"err"`
-
-	// Time contains the time when
-	// the error was encountered.
-	Time time.Time `json:"time"`
+	// Not stored in the db.
+	DeliveryErrors []*FederationError `bun:"-"`
 }
 
 // InstanceOrderBy is for doing db

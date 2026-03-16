@@ -18,7 +18,9 @@
 package bundb_test
 
 import (
+	"strconv"
 	"testing"
+	"time"
 
 	"code.superseriousbusiness.org/gotosocial/internal/db"
 	"code.superseriousbusiness.org/gotosocial/internal/gtsmodel"
@@ -106,6 +108,42 @@ func (suite *InstanceTestSuite) TestGetInstanceModeratorAddressesNoAdmin() {
 	addresses, err := suite.db.GetInstanceModeratorAddresses(suite.T().Context())
 	suite.ErrorIs(err, db.ErrNoEntries)
 	suite.Empty(addresses)
+}
+
+func (suite *InstanceTestSuite) TestInstanceDeliveryTracking() {
+	ctx := suite.T().Context()
+	testInstance := suite.testInstances["thequeenisstillalive.technology"]
+
+	for i := 0; i <= 25; i++ {
+		if err := suite.state.DB.AddInstanceDeliveryError(ctx,
+			testInstance.Domain,
+			"error "+strconv.Itoa(i),
+		); err != nil {
+			suite.FailNow(err.Error())
+		}
+
+		instance, err := suite.state.DB.GetInstanceByID(ctx, testInstance.ID)
+		if err != nil {
+			suite.FailNow(err.Error())
+		}
+
+		if l := len(instance.DeliveryErrors); l > 20 {
+			suite.FailNow("", "instance delivery errors length was %d, wanted < 20", l)
+		}
+	}
+
+	// Clear all the errors we just added by setting successful delivery to now.
+	if err := suite.state.DB.SetInstanceSuccessfulDelivery(ctx, testInstance.Domain); err != nil {
+		suite.FailNow(err.Error())
+	}
+
+	instance, err := suite.state.DB.GetInstanceByID(ctx, testInstance.ID)
+	if err != nil {
+		suite.FailNow(err.Error())
+	}
+
+	suite.Empty(instance.DeliveryErrors)
+	suite.WithinDuration(time.Now(), instance.LatestSuccessfulDelivery, 1*time.Minute)
 }
 
 func TestInstanceTestSuite(t *testing.T) {

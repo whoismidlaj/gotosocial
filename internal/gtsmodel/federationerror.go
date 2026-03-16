@@ -17,11 +17,34 @@
 
 package gtsmodel
 
-import "time"
+type FederationError struct {
+	// ID of this item in the database.
+	ID string `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
 
-type Instance struct {
-	ID                       string    `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
-	Domain                   string    `bun:",nullzero,notnull,unique"`
-	Software                 string    `bun:",nullzero"`
-	LatestSuccessfulDelivery time.Time `bun:"type:timestamptz,nullzero"`
+	// ID of the instance to which
+	// this federation error pertains.
+	InstanceID string `bun:"type:CHAR(26),nullzero,notnull"`
+
+	// Type of this federation error.
+	Type FederationErrorType `bun:",nullzero,notnull"`
+
+	// Error message.
+	Error string `bun:",nullzero,notnull"`
 }
+
+type FederationErrorType enumType
+
+const (
+	// Should not occur.
+	FederationErrorTypeUnknown FederationErrorType = iota
+
+	// Error while attempting
+	// delivery to an inbox.
+	FederationErrorTypeDelivery
+
+	// RESERVED: currently unused.
+	FederationErrorTypeDereferencing
+
+	// RESERVED: currently unused.
+	FederationErrorTypeHTTPSignature
+)

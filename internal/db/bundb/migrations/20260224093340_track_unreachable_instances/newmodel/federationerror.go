@@ -17,11 +17,9 @@
 
 package gtsmodel
 
-import "time"
-
-type Instance struct {
-	ID                       string    `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
-	Domain                   string    `bun:",nullzero,notnull,unique"`
-	Software                 string    `bun:",nullzero"`
-	LatestSuccessfulDelivery time.Time `bun:"type:timestamptz,nullzero"`
+type FederationError struct {
+	ID         string `bun:"type:CHAR(26),pk,nullzero,notnull,unique"`
+	InstanceID string `bun:"type:CHAR(26),nullzero,notnull"`
+	Type       int16  `bun:",nullzero,notnull"`
+	Error      string `bun:",nullzero,notnull"`
 }

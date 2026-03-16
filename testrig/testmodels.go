@@ -39,6 +39,7 @@ import (
 	"code.superseriousbusiness.org/activity/streams/vocab"
 	"code.superseriousbusiness.org/gotosocial/internal/ap"
 	"code.superseriousbusiness.org/gotosocial/internal/gtsmodel"
+	"code.superseriousbusiness.org/gotosocial/internal/id"
 	"code.superseriousbusiness.org/gotosocial/internal/transport"
 	"code.superseriousbusiness.org/gotosocial/internal/util"
 )
@@ -1897,20 +1898,9 @@ func NewTestInstances() map[string]*gtsmodel.Instance {
 			LatestSuccessfulDelivery: TimeMustParse("2023-07-18T09:01:00Z"),
 		},
 		"thequeenisstillalive.technology": {
-			ID:                  "01EFC4MHE8K7MVS500P32JZRYE",
-			Domain:              "thequeenisstillalive.technology",
-			Software:            "gotosocial",
-			DeliveryErrorsCount: 1,
-			DeliveryErrors: []gtsmodel.InstanceDeliveryError{
-				{
-					Error: "Post \"https://thequeenisstillalive.technology/inbox\": remote error: tls: unrecognized name",
-					Time:  TimeMustParse("2023-07-19T10:15:12Z"),
-				},
-				{
-					Error: "too stinky",
-					Time:  TimeMustParse("2023-07-18T09:01:00Z"),
-				},
-			},
+			ID:       "01EFC4MHE8K7MVS500P32JZRYE",
+			Domain:   "thequeenisstillalive.technology",
+			Software: "gotosocial",
 		},
 		"xn--xample-ova.org": {
 			ID:                       "01G4QA52E8Q9CZKHMBXD2J1PH1",
@@ -1922,6 +1912,23 @@ func NewTestInstances() map[string]*gtsmodel.Instance {
 			ID:       "01E85P26Y8DHXPY0R6JB28DNJV",
 			Domain:   "replyguys.com",
 			Software: "akkoma",
+		},
+	}
+}
+
+func NewTestFederationErrors() map[string]*gtsmodel.FederationError {
+	return map[string]*gtsmodel.FederationError{
+		"thequeenisstillalive.technology_1": {
+			ID:         id.NewULIDFromTime(TimeMustParse("2023-07-19T10:15:12Z")),
+			InstanceID: "01EFC4MHE8K7MVS500P32JZRYE",
+			Type:       gtsmodel.FederationErrorTypeDelivery,
+			Error:      "Post \"https://thequeenisstillalive.technology/inbox\": remote error: tls: unrecognized name",
+		},
+		"thequeenisstillalive.technology_2": {
+			ID:         id.NewULIDFromTime(TimeMustParse("2023-07-18T09:01:00Z")),
+			InstanceID: "01EFC4MHE8K7MVS500P32JZRYE",
+			Type:       gtsmodel.FederationErrorTypeDelivery,
+			Error:      "too stinky",
 		},
 	}
 }

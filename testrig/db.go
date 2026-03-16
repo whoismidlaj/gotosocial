@@ -37,6 +37,7 @@ var testModels = []interface{}{
 	&gtsmodel.Block{},
 	&gtsmodel.DomainBlock{},
 	&gtsmodel.EmailDomainBlock{},
+	&gtsmodel.FederationError{},
 	&gtsmodel.Filter{},
 	&gtsmodel.FilterKeyword{},
 	&gtsmodel.FilterStatus{},
@@ -229,6 +230,12 @@ func StandardDBSetup(db db.DB, accounts map[string]*gtsmodel.Account) {
 	}
 
 	for _, v := range NewTestEmojiCategories() {
+		if err := db.Put(ctx, v); err != nil {
+			log.Panic(ctx, err)
+		}
+	}
+
+	for _, v := range NewTestFederationErrors() {
 		if err := db.Put(ctx, v); err != nil {
 			log.Panic(ctx, err)
 		}

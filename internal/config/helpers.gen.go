@@ -177,6 +177,7 @@ const (
 	CacheDomainPermissionSubscriptionMemRatioFlag = "cache-domain-permission-subscription-mem-ratio"
 	CacheEmojiMemRatioFlag                        = "cache-emoji-mem-ratio"
 	CacheEmojiCategoryMemRatioFlag                = "cache-emoji-category-mem-ratio"
+	CacheFederationErrorMemRatioFlag              = "cache-federation-error-mem-ratio"
 	CacheFilterMemRatioFlag                       = "cache-filter-mem-ratio"
 	CacheFilterIDsMemRatioFlag                    = "cache-filter-ids-mem-ratio"
 	CacheFilterKeywordMemRatioFlag                = "cache-filter-keyword-mem-ratio"
@@ -384,6 +385,7 @@ func (cfg *Configuration) RegisterFlags(flags *pflag.FlagSet) {
 	flags.Float64("cache-domain-permission-subscription-mem-ratio", cfg.Cache.DomainPermissionSubscriptionMemRatio, "")
 	flags.Float64("cache-emoji-mem-ratio", cfg.Cache.EmojiMemRatio, "")
 	flags.Float64("cache-emoji-category-mem-ratio", cfg.Cache.EmojiCategoryMemRatio, "")
+	flags.Float64("cache-federation-error-mem-ratio", cfg.Cache.FederationErrorMemRatio, "")
 	flags.Float64("cache-filter-mem-ratio", cfg.Cache.FilterMemRatio, "")
 	flags.Float64("cache-filter-ids-mem-ratio", cfg.Cache.FilterIDsMemRatio, "")
 	flags.Float64("cache-filter-keyword-mem-ratio", cfg.Cache.FilterKeywordMemRatio, "")
@@ -434,7 +436,7 @@ func (cfg *Configuration) RegisterFlags(flags *pflag.FlagSet) {
 }
 
 func (cfg *Configuration) MarshalMap() map[string]any {
-	cfgmap := make(map[string]any, 204)
+	cfgmap := make(map[string]any, 205)
 	cfgmap["log-level"] = cfg.LogLevel
 	cfgmap["log-format"] = cfg.LogFormat
 	cfgmap["log-timestamp-format"] = cfg.LogTimestampFormat
@@ -583,6 +585,7 @@ func (cfg *Configuration) MarshalMap() map[string]any {
 	cfgmap["cache-domain-permission-subscription-mem-ratio"] = cfg.Cache.DomainPermissionSubscriptionMemRatio
 	cfgmap["cache-emoji-mem-ratio"] = cfg.Cache.EmojiMemRatio
 	cfgmap["cache-emoji-category-mem-ratio"] = cfg.Cache.EmojiCategoryMemRatio
+	cfgmap["cache-federation-error-mem-ratio"] = cfg.Cache.FederationErrorMemRatio
 	cfgmap["cache-filter-mem-ratio"] = cfg.Cache.FilterMemRatio
 	cfgmap["cache-filter-ids-mem-ratio"] = cfg.Cache.FilterIDsMemRatio
 	cfgmap["cache-filter-keyword-mem-ratio"] = cfg.Cache.FilterKeywordMemRatio
@@ -1866,6 +1869,14 @@ func (cfg *Configuration) UnmarshalMap(cfgmap map[string]any) error {
 		cfg.Cache.EmojiCategoryMemRatio, err = cast.ToFloat64E(ival)
 		if err != nil {
 			return fmt.Errorf("error casting %#v -> float64 for 'cache-emoji-category-mem-ratio': %w", ival, err)
+		}
+	}
+
+	if ival, ok := cfgmap["cache-federation-error-mem-ratio"]; ok {
+		var err error
+		cfg.Cache.FederationErrorMemRatio, err = cast.ToFloat64E(ival)
+		if err != nil {
+			return fmt.Errorf("error casting %#v -> float64 for 'cache-federation-error-mem-ratio': %w", ival, err)
 		}
 	}
 
@@ -5594,6 +5605,28 @@ func GetCacheEmojiCategoryMemRatio() float64 { return global.GetCacheEmojiCatego
 // SetCacheEmojiCategoryMemRatio safely sets the value for global configuration 'Cache.EmojiCategoryMemRatio' field
 func SetCacheEmojiCategoryMemRatio(v float64) { global.SetCacheEmojiCategoryMemRatio(v) }
 
+// GetCacheFederationErrorMemRatio safely fetches the Configuration value for state's 'Cache.FederationErrorMemRatio' field
+func (st *ConfigState) GetCacheFederationErrorMemRatio() (v float64) {
+	st.mutex.RLock()
+	v = st.config.Cache.FederationErrorMemRatio
+	st.mutex.RUnlock()
+	return
+}
+
+// SetCacheFederationErrorMemRatio safely sets the Configuration value for state's 'Cache.FederationErrorMemRatio' field
+func (st *ConfigState) SetCacheFederationErrorMemRatio(v float64) {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	st.config.Cache.FederationErrorMemRatio = v
+	st.reloadToViper()
+}
+
+// GetCacheFederationErrorMemRatio safely fetches the value for global configuration 'Cache.FederationErrorMemRatio' field
+func GetCacheFederationErrorMemRatio() float64 { return global.GetCacheFederationErrorMemRatio() }
+
+// SetCacheFederationErrorMemRatio safely sets the value for global configuration 'Cache.FederationErrorMemRatio' field
+func SetCacheFederationErrorMemRatio(v float64) { global.SetCacheFederationErrorMemRatio(v) }
+
 // GetCacheFilterMemRatio safely fetches the Configuration value for state's 'Cache.FilterMemRatio' field
 func (st *ConfigState) GetCacheFilterMemRatio() (v float64) {
 	st.mutex.RLock()
@@ -6851,6 +6884,7 @@ func (st *ConfigState) GetTotalOfMemRatios() (total float64) {
 	total += st.config.Cache.DomainPermissionSubscriptionMemRatio
 	total += st.config.Cache.EmojiMemRatio
 	total += st.config.Cache.EmojiCategoryMemRatio
+	total += st.config.Cache.FederationErrorMemRatio
 	total += st.config.Cache.FilterMemRatio
 	total += st.config.Cache.FilterIDsMemRatio
 	total += st.config.Cache.FilterKeywordMemRatio
@@ -7423,6 +7457,17 @@ func flattenConfigMap(cfgmap map[string]any) {
 		ival, ok := mapGet(cfgmap, key...)
 		if ok {
 			cfgmap["cache-emoji-category-mem-ratio"] = ival
+			nestedKeys[key[0]] = struct{}{}
+			break
+		}
+	}
+
+	for _, key := range [][]string{
+		{"cache", "federation-error-mem-ratio"},
+	} {
+		ival, ok := mapGet(cfgmap, key...)
+		if ok {
+			cfgmap["cache-federation-error-mem-ratio"] = ival
 			nestedKeys[key[0]] = struct{}{}
 			break
 		}

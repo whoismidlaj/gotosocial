@@ -3270,12 +3270,16 @@ func (c *Converter) InstanceToAdminAPIInstance(ctx context.Context, i *gtsmodel.
 	}
 
 	deliveryErrors := make([]apimodel.AdminInstanceDeliveryError, 0)
-	for _, de := range i.DeliveryErrors {
+	for _, dErr := range i.DeliveryErrors {
+		errTime, err := id.TimeFromULID(dErr.ID)
+		if err != nil {
+			return nil, gtserror.Newf("error converting id to time: %w", err)
+		}
 		deliveryErrors = append(
 			deliveryErrors,
 			apimodel.AdminInstanceDeliveryError{
-				Time:  util.FormatISO8601(de.Time),
-				Error: de.Error,
+				Time:  util.FormatISO8601(errTime),
+				Error: dErr.Error,
 			},
 		)
 	}

@@ -360,6 +360,15 @@ func sizeofEmojiCategory() uintptr {
 	}))
 }
 
+func sizeofFederationError() uintptr {
+	return uintptr(size.Of(&gtsmodel.FederationError{
+		ID:         exampleID,
+		InstanceID: exampleID,
+		Type:       1,
+		Error:      exampleTextSmall,
+	}))
+}
+
 func sizeofFilter() uintptr {
 	return uintptr(size.Of(&gtsmodel.Filter{
 		ID:        exampleID,
