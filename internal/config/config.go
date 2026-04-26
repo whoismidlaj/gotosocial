@@ -266,6 +266,10 @@ type CacheConfiguration struct {
 	PollVoteMemRatio                     float64       `name:"poll-vote-mem-ratio"`
 	PollVoteIDsMemRatio                  float64       `name:"poll-vote-ids-mem-ratio"`
 	ReportMemRatio                       float64       `name:"report-mem-ratio"`
+	RelayMatcherMemRatio                 float64       `name:"relay-matcher-mem-ratio"`
+	RelayPushMemRatio                    float64       `name:"relay-push-mem-ratio"`
+	RelayPushIDsMemRatio                 float64       `name:"relay-push-ids-mem-ratio"`
+	RelaySubscriptionMemRatio            float64       `name:"relay-subscription-mem-ratio"`
 	ScheduledStatusMemRatio              float64       `name:"scheduled-status-mem-ratio"`
 	SinBinStatusMemRatio                 float64       `name:"sin-bin-status-mem-ratio"`
 	StatusMemRatio                       float64       `name:"status-mem-ratio"`
