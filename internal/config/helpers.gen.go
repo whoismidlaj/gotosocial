@@ -97,6 +97,7 @@ const (
 	StorageS3RedirectURLFlag                      = "storage-s3-redirect-url"
 	StorageS3BucketLookupFlag                     = "storage-s3-bucket-lookup"
 	StorageS3KeyPrefixFlag                        = "storage-s3-key-prefix"
+	StorageS3RegionFlag                           = "storage-s3-region"
 	StatusesMaxCharsFlag                          = "statuses-max-chars"
 	StatusesPollMaxOptionsFlag                    = "statuses-poll-max-options"
 	StatusesPollOptionMaxCharsFlag                = "statuses-poll-option-max-chars"
@@ -306,6 +307,7 @@ func (cfg *Configuration) RegisterFlags(flags *pflag.FlagSet) {
 	flags.String("storage-s3-redirect-url", cfg.StorageS3RedirectURL, "Custom URL to use for redirecting S3 media links. If set, this will be used instead of the S3 bucket URL.")
 	flags.String("storage-s3-bucket-lookup", cfg.StorageS3BucketLookup, "S3 bucket lookup type to use. Can be 'auto', 'dns' or 'path'. Defaults to 'auto'.")
 	flags.String("storage-s3-key-prefix", cfg.StorageS3KeyPrefix, "Prefix to use for S3 keys. This is useful for separating multiple instances sharing the same S3 bucket.")
+	flags.String("storage-s3-region", cfg.StorageS3Region, "Region to use for S3.")
 	flags.Int("statuses-max-chars", cfg.StatusesMaxChars, "Max permitted characters for posted statuses, including content warning")
 	flags.Int("statuses-poll-max-options", cfg.StatusesPollMaxOptions, "Max amount of options permitted on a poll")
 	flags.Int("statuses-poll-option-max-chars", cfg.StatusesPollOptionMaxChars, "Max amount of characters for a poll option")
@@ -507,6 +509,7 @@ func (cfg *Configuration) MarshalMap() map[string]any {
 	cfgmap["storage-s3-redirect-url"] = cfg.StorageS3RedirectURL
 	cfgmap["storage-s3-bucket-lookup"] = cfg.StorageS3BucketLookup
 	cfgmap["storage-s3-key-prefix"] = cfg.StorageS3KeyPrefix
+	cfgmap["storage-s3-region"] = cfg.StorageS3Region
 	cfgmap["statuses-max-chars"] = cfg.StatusesMaxChars
 	cfgmap["statuses-poll-max-options"] = cfg.StatusesPollMaxOptions
 	cfgmap["statuses-poll-option-max-chars"] = cfg.StatusesPollOptionMaxChars
@@ -1206,6 +1209,14 @@ func (cfg *Configuration) UnmarshalMap(cfgmap map[string]any) error {
 		cfg.StorageS3KeyPrefix, err = cast.ToStringE(ival)
 		if err != nil {
 			return fmt.Errorf("error casting %#v -> string for 'storage-s3-key-prefix': %w", ival, err)
+		}
+	}
+
+	if ival, ok := cfgmap["storage-s3-region"]; ok {
+		var err error
+		cfg.StorageS3Region, err = cast.ToStringE(ival)
+		if err != nil {
+			return fmt.Errorf("error casting %#v -> string for 'storage-s3-region': %w", ival, err)
 		}
 	}
 
@@ -3843,6 +3854,28 @@ func GetStorageS3KeyPrefix() string { return global.GetStorageS3KeyPrefix() }
 
 // SetStorageS3KeyPrefix safely sets the value for global configuration 'StorageS3KeyPrefix' field
 func SetStorageS3KeyPrefix(v string) { global.SetStorageS3KeyPrefix(v) }
+
+// GetStorageS3Region safely fetches the Configuration value for state's 'StorageS3Region' field
+func (st *ConfigState) GetStorageS3Region() (v string) {
+	st.mutex.RLock()
+	v = st.config.StorageS3Region
+	st.mutex.RUnlock()
+	return
+}
+
+// SetStorageS3Region safely sets the Configuration value for state's 'StorageS3Region' field
+func (st *ConfigState) SetStorageS3Region(v string) {
+	st.mutex.Lock()
+	defer st.mutex.Unlock()
+	st.config.StorageS3Region = v
+	st.reloadToViper()
+}
+
+// GetStorageS3Region safely fetches the value for global configuration 'StorageS3Region' field
+func GetStorageS3Region() string { return global.GetStorageS3Region() }
+
+// SetStorageS3Region safely sets the value for global configuration 'StorageS3Region' field
+func SetStorageS3Region(v string) { global.SetStorageS3Region(v) }
 
 // GetStatusesMaxChars safely fetches the Configuration value for state's 'StatusesMaxChars' field
 func (st *ConfigState) GetStatusesMaxChars() (v int) {

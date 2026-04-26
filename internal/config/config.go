@@ -127,6 +127,7 @@ type Configuration struct {
 	StorageS3RedirectURL  string `name:"storage-s3-redirect-url" usage:"Custom URL to use for redirecting S3 media links. If set, this will be used instead of the S3 bucket URL."`
 	StorageS3BucketLookup string `name:"storage-s3-bucket-lookup" usage:"S3 bucket lookup type to use. Can be 'auto', 'dns' or 'path'. Defaults to 'auto'."`
 	StorageS3KeyPrefix    string `name:"storage-s3-key-prefix" usage:"Prefix to use for S3 keys. This is useful for separating multiple instances sharing the same S3 bucket."`
+	StorageS3Region       string `name:"storage-s3-region" usage:"Region to use for S3."`
 
 	StatusesMaxChars           int `name:"statuses-max-chars" usage:"Max permitted characters for posted statuses, including content warning"`
 	StatusesPollMaxOptions     int `name:"statuses-poll-max-options" usage:"Max amount of options permitted on a poll"`
