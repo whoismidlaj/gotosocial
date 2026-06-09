@@ -63,6 +63,8 @@ builds:
     goarch:
       - amd64
       - arm64
+    goamd64:
+      - v2
     mod_timestamp: "{{ .CommitTimestamp }}"
   # NOWASM BINARY BUILDS
   -
@@ -131,6 +133,7 @@ dockers:
     use: buildx
     goos: linux
     goarch: amd64
+    goamd64: v2
     id: amd64
     ids:
     - gotosocial
