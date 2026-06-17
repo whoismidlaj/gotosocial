@@ -26,10 +26,12 @@ import (
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/apps"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/blocks"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/bookmarks"
+	"code.superseriousbusiness.org/gotosocial/internal/api/client/collections"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/conversations"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/customemojis"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/debug"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/directory"
+	"code.superseriousbusiness.org/gotosocial/internal/api/client/discover"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/exports"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/favourites"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/featuredtags"
@@ -54,6 +56,7 @@ import (
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/scheduledstatuses"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/search"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/statuses"
+	"code.superseriousbusiness.org/gotosocial/internal/api/client/stories"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/streaming"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/suggestions"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/tags"
@@ -80,12 +83,14 @@ type Client struct {
 	blocks              *blocks.Module              // api/v1/blocks
 	bookmarks           *bookmarks.Module           // api/v1/bookmarks
 	conversations       *conversations.Module       // api/v1/conversations
+	collections         *collections.Module         // api/v1/collections
 	customEmojis        *customemojis.Module        // api/v1/custom_emojis
 	debug               *debug.Module               // api/v1/debug
 	directory           *directory.Module           // api/v1/directory
 	exports             *exports.Module             // api/v1/exports
 	favourites          *favourites.Module          // api/v1/favourites
 	featuredTags        *featuredtags.Module        // api/v1/featured_tags
+	discover            *discover.Module            // api/v1/discover
 	filtersV1           *filtersV1.Module           // api/v1/filters
 	filtersV2           *filtersV2.Module           // api/v2/filters
 	followRequests      *followrequests.Module      // api/v1/follow_requests
@@ -109,6 +114,7 @@ type Client struct {
 	statuses            *statuses.Module            // api/v1/statuses
 	streaming           *streaming.Module           // api/v1/streaming
 	suggestions         *suggestions.Module         // api/v2/suggestions
+	stories             *stories.Module             // api/v1/stories
 	tags                *tags.Module                // api/v1/tags
 	timelines           *timelines.Module           // api/v1/timelines
 	tokens              *tokens.Module              // api/v1/tokens
@@ -140,12 +146,14 @@ func (c *Client) Route(r *router.Router, m ...gin.HandlerFunc) {
 	c.blocks.Route(h)
 	c.bookmarks.Route(h)
 	c.conversations.Route(h)
+	c.collections.Route(h)
 	c.customEmojis.Route(h)
 	c.debug.Route(h)
 	c.directory.Route(h)
 	c.exports.Route(h)
 	c.favourites.Route(h)
 	c.featuredTags.Route(h)
+	c.discover.Route(h)
 	c.filtersV1.Route(h)
 	c.filtersV2.Route(h)
 	c.followRequests.Route(h)
@@ -169,6 +177,7 @@ func (c *Client) Route(r *router.Router, m ...gin.HandlerFunc) {
 	c.statuses.Route(h)
 	c.streaming.Route(h)
 	c.suggestions.Route(h)
+	c.stories.Route(h)
 	c.tags.Route(h)
 	c.timelines.Route(h)
 	c.tokens.Route(h)
@@ -188,12 +197,14 @@ func NewClient(state *state.State, p *processing.Processor) *Client {
 		blocks:              blocks.New(p),
 		bookmarks:           bookmarks.New(p),
 		conversations:       conversations.New(p),
+		collections:         collections.New(p),
 		customEmojis:        customemojis.New(p),
 		debug:               debug.New(state, p),
 		directory:           directory.New(p),
 		exports:             exports.New(p),
 		favourites:          favourites.New(p),
 		featuredTags:        featuredtags.New(p),
+		discover:            discover.New(p),
 		filtersV1:           filtersV1.New(p),
 		filtersV2:           filtersV2.New(p),
 		followRequests:      followrequests.New(p),
@@ -217,6 +228,7 @@ func NewClient(state *state.State, p *processing.Processor) *Client {
 		statuses:            statuses.New(p),
 		streaming:           streaming.New(p, time.Second*30, 4096),
 		suggestions:         suggestions.New(p),
+		stories:             stories.New(p),
 		tags:                tags.New(p),
 		timelines:           timelines.New(p),
 		tokens:              tokens.New(p),

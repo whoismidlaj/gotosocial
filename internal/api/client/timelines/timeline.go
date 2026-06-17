@@ -29,6 +29,7 @@ const (
 	BasePath       = "/v1/timelines"
 	HomeTimeline   = BasePath + "/home"
 	PublicTimeline = BasePath + "/public"
+	DirectTimeline = BasePath + "/direct"
 	ListTimeline   = BasePath + "/list/:" + apiutil.IDKey
 	TagTimeline    = BasePath + "/tag/:" + apiutil.TagNameKey
 )
@@ -46,6 +47,7 @@ func New(processor *processing.Processor) *Module {
 func (m *Module) Route(attachHandler func(method string, path string, f ...gin.HandlerFunc) gin.IRoutes) {
 	attachHandler(http.MethodGet, HomeTimeline, m.HomeTimelineGETHandler)
 	attachHandler(http.MethodGet, PublicTimeline, m.PublicTimelineGETHandler)
+	attachHandler(http.MethodGet, DirectTimeline, m.DirectTimelineGETHandler)
 	attachHandler(http.MethodGet, ListTimeline, m.ListTimelineGETHandler)
 	attachHandler(http.MethodGet, TagTimeline, m.TagTimelineGETHandler)
 }

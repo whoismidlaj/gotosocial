@@ -1876,6 +1876,7 @@ func (c *Converter) InstanceSettingsToAPIV2Instance(
 	instance.Configuration.Accounts.MaxProfileFields = config.GetAccountsMaxProfileFields()
 	instance.Configuration.Emojis.EmojiSizeLimit = int(config.GetMediaEmojiLocalMaxSize()) // #nosec G115 -- Already validated.
 	instance.Configuration.OIDCEnabled = config.GetOIDCEnabled()
+	instance.Configuration.PixelfedCompat = true
 
 	vapidKeyPair, err := c.state.DB.GetVAPIDKeyPair(ctx)
 	if err != nil {

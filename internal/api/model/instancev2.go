@@ -190,6 +190,8 @@ type InstanceV2Configuration struct {
 	OIDCEnabled bool `json:"oidc_enabled,omitempty"`
 	// Instance VAPID configuration.
 	VAPID InstanceV2ConfigurationVAPID `json:"vapid"`
+	// True if Pixelfed compatibility layer is enabled.
+	PixelfedCompat bool `json:"pixelfed_compat,omitempty"`
 }
 
 // Information about registering for this instance.

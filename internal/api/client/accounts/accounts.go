@@ -51,6 +51,7 @@ const (
 	RelationshipsPath = BasePath + "/relationships"
 	SearchPath        = BasePath + "/search"
 	StatusesPath      = BasePathWithID + "/statuses"
+	AlbumsPath        = BasePathWithID + "/albums"
 	UnblockPath       = BasePathWithID + "/unblock"
 	UnfollowPath      = BasePathWithID + "/unfollow"
 	UnmutePath        = BasePathWithID + "/unmute"
@@ -99,6 +100,9 @@ func (m *Module) Route(attachHandler func(method string, path string, f ...gin.H
 	// get account's statuses
 	attachHandler(http.MethodGet, StatusesPath, m.AccountStatusesGETHandler)
 
+	// get account's albums (stub)
+	attachHandler(http.MethodGet, AlbumsPath, m.AccountAlbumsGETHandler)
+
 	// get account's featured tags
 	attachHandler(http.MethodGet, FeaturedTagsPath, m.AccountFeaturedTagsGETHandler)
 
@@ -138,3 +142,8 @@ func (m *Module) Route(attachHandler func(method string, path string, f ...gin.H
 	// account themes
 	attachHandler(http.MethodGet, ThemesPath, m.AccountThemesGETHandler)
 }
+
+func (m *Module) AccountAlbumsGETHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, []interface{}{})
+}
+
