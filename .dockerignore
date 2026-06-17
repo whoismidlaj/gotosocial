@@ -2,7 +2,6 @@
 .vscode
 archive
 dist
-docs
 example
 scripts
 test
