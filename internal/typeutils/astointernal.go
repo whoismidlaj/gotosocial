@@ -670,7 +670,7 @@ func (c *Converter) ASAnnounceToStatus(
 	if pub := ap.GetPublished(announceable); !pub.IsZero() {
 		boost.CreatedAt = pub
 	} else {
-		log.Debugf(ctx, "unusable published property on %s, falling back to time.Now()", uri)
+		log.Debugf(ctx, "unusable published property on %s", uri)
 		boost.CreatedAt = time.Now()
 	}
 
