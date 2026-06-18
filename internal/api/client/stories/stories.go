@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"code.superseriousbusiness.org/gotosocial/internal/processing"
-	"code.superseriousbusiness.org/gotosocial/internal/router"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,9 +17,9 @@ func New(processor *processing.Processor) *Module {
 	}
 }
 
-func (m *Module) Route(g router.Group) {
-	g.GET("/v1/stories", m.getStories)
-	g.GET("/v1/accounts/:id/stories", m.getAccountStories)
+func (m *Module) Route(attachHandler func(method string, path string, f ...gin.HandlerFunc) gin.IRoutes) {
+	attachHandler(http.MethodGet, "/v1/stories", m.getStories)
+	attachHandler(http.MethodGet, "/v1/accounts/:id/stories", m.getAccountStories)
 }
 
 func (m *Module) getStories(c *gin.Context) {
