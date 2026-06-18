@@ -20,6 +20,8 @@ package model
 // Source represents display or publishing preferences of user's own account.
 // Returned as an additional entity when verifying and updated credentials, as an attribute of Account.
 type Source struct {
+	// The email address associated with the account.
+	Email string `json:"email,omitempty"`
 	// The default post privacy to be used for new statuses.
 	//    public = Public post
 	//    unlisted = Unlisted post

@@ -165,6 +165,10 @@ func (c *Converter) AccountToAPIAccountSensitive(ctx context.Context, a *gtsmode
 		AlsoKnownAsURIs:     a.AlsoKnownAsURIs,
 	}
 
+	if u, err := c.state.DB.GetUserByAccountID(ctx, a.ID); err == nil && u != nil {
+		apiAccount.Source.Email = u.Email
+	}
+
 	return apiAccount, nil
 }
 
