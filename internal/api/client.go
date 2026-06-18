@@ -18,7 +18,10 @@
 package api
 
 import (
+	"net/http"
 	"time"
+
+	apiutil "code.superseriousbusiness.org/gotosocial/internal/api/util"
 
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/accounts"
 	"code.superseriousbusiness.org/gotosocial/internal/api/client/admin"
@@ -183,6 +186,9 @@ func (c *Client) Route(r *router.Router, m ...gin.HandlerFunc) {
 	c.tokens.Route(h)
 	c.trends.Route(h)
 	c.user.Route(h)
+
+	apiGroup.GET("/nodeinfo/2.0.json", c.getNodeInfo20)
+	apiGroup.GET("/nodeinfo/2.1.json", c.getNodeInfo21)
 }
 
 func NewClient(state *state.State, p *processing.Processor) *Client {
@@ -236,3 +242,24 @@ func NewClient(state *state.State, p *processing.Processor) *Client {
 		user:                user.New(p),
 	}
 }
+
+func (c *Client) getNodeInfo20(ctx *gin.Context) {
+	nodeInfo, errWithCode := c.processor.Fedi().NodeInfoGet(ctx.Request.Context(), "2.0")
+	if errWithCode != nil {
+		apiutil.ErrorHandler(ctx, errWithCode, c.processor.InstanceGetV1)
+		return
+	}
+	ctx.Header("Content-Type", "application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.0#\"")
+	ctx.JSON(http.StatusOK, nodeInfo)
+}
+
+func (c *Client) getNodeInfo21(ctx *gin.Context) {
+	nodeInfo, errWithCode := c.processor.Fedi().NodeInfoGet(ctx.Request.Context(), "2.1")
+	if errWithCode != nil {
+		apiutil.ErrorHandler(ctx, errWithCode, c.processor.InstanceGetV1)
+		return
+	}
+	ctx.Header("Content-Type", "application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.1#\"")
+	ctx.JSON(http.StatusOK, nodeInfo)
+}
+
