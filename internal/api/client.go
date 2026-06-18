@@ -249,6 +249,8 @@ func (c *Client) getNodeInfo20(ctx *gin.Context) {
 		apiutil.ErrorHandler(ctx, errWithCode, c.processor.InstanceGetV1)
 		return
 	}
+	nodeInfo.Software.Name = "pixelfed"
+	nodeInfo.Software.Version = "0.11.9"
 	ctx.Header("Content-Type", "application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.0#\"")
 	ctx.JSON(http.StatusOK, nodeInfo)
 }
@@ -259,6 +261,8 @@ func (c *Client) getNodeInfo21(ctx *gin.Context) {
 		apiutil.ErrorHandler(ctx, errWithCode, c.processor.InstanceGetV1)
 		return
 	}
+	nodeInfo.Software.Name = "pixelfed"
+	nodeInfo.Software.Version = "0.11.9"
 	ctx.Header("Content-Type", "application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.1#\"")
 	ctx.JSON(http.StatusOK, nodeInfo)
 }
