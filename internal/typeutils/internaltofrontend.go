@@ -341,6 +341,7 @@ func (c *Converter) accountToAPIAccountPublic(ctx context.Context, a *gtsmodel.A
 		theme           string
 		customCSS       string
 		hideCollections bool
+		isAdmin         bool
 	)
 
 	if a.IsRemote() {
@@ -364,6 +365,9 @@ func (c *Converter) accountToAPIAccountPublic(ctx context.Context, a *gtsmodel.A
 			if role := c.UserToAPIAccountDisplayRole(user); role != nil {
 				roles = append(roles, *role)
 			}
+			if user.Admin != nil {
+				isAdmin = *user.Admin
+			}
 
 			enableRSS = *a.Settings.EnableRSS
 			theme = a.Settings.Theme
@@ -382,6 +386,32 @@ func (c *Converter) accountToAPIAccountPublic(ctx context.Context, a *gtsmodel.A
 
 	// Remaining properties are simple and
 	// can be populated directly below.
+
+	var website string
+	for _, f := range fields {
+		if strings.ToLower(f.Name) == "website" {
+			website = f.Value
+			break
+		}
+	}
+
+	var pixelfedSettings *apimodel.PixelfedSettings
+	if a.Settings != nil {
+		pixelfedSettings = &apimodel.PixelfedSettings{
+			Crawlable:                 discoverable,
+			DisableEmbeds:             false,
+			HighContrastMode:          false,
+			Indexable:                 indexable,
+			IsSuggestable:             discoverable,
+			MediaDescriptions:         true,
+			PublicDM:                  true,
+			ReduceMotion:              false,
+			ShowAtom:                  true,
+			ShowProfileFollowerCount:  !hideCollections,
+			ShowProfileFollowingCount: !hideCollections,
+			VideoAutoplay:             true,
+		}
+	}
 
 	accountFrontend := &apimodel.Account{
 		ID:                a.ID,
@@ -417,6 +447,13 @@ func (c *Converter) accountToAPIAccountPublic(ctx context.Context, a *gtsmodel.A
 		HideCollections:   hideCollections,
 		Roles:             roles,
 		Group:             false,
+		Local:             !a.IsRemote(),
+		IsAdmin:           isAdmin,
+		Website:           website,
+		Settings:          pixelfedSettings,
+		Pronouns:          []string{},
+		LastFetchedAt:     nil,
+		Location:          nil,
 	}
 
 	// Bodge default avatar + header in,

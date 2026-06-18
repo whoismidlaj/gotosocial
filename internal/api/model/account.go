@@ -133,7 +133,32 @@ type Account struct {
 	Moved *Account `json:"moved,omitempty"`
 	// Account identifies as a Group actor.
 	Group bool `json:"group"`
+	// Pixelfed compatibility fields.
+	IsAdmin       bool              `json:"is_admin"`
+	LastFetchedAt *string           `json:"last_fetched_at"`
+	Local         bool              `json:"local"`
+	Location      *string           `json:"location"`
+	Pronouns      []string          `json:"pronouns"`
+	Website       string            `json:"website"`
+	Settings      *PixelfedSettings `json:"settings,omitempty"`
 }
+
+// PixelfedSettings models settings / preferences for a Pixelfed account.
+type PixelfedSettings struct {
+	Crawlable                 bool `json:"crawlable"`
+	DisableEmbeds             bool `json:"disable_embeds"`
+	HighContrastMode          bool `json:"high_contrast_mode"`
+	Indexable                 bool `json:"indexable"`
+	IsSuggestable             bool `json:"is_suggestable"`
+	MediaDescriptions         bool `json:"media_descriptions"`
+	PublicDM                  bool `json:"public_dm"`
+	ReduceMotion              bool `json:"reduce_motion"`
+	ShowAtom                  bool `json:"show_atom"`
+	ShowProfileFollowerCount  bool `json:"show_profile_follower_count"`
+	ShowProfileFollowingCount bool `json:"show_profile_following_count"`
+	VideoAutoplay             bool `json:"video_autoplay"`
+}
+
 
 // WebAccount is like Account, but with
 // additional fields not exposed via JSON;
