@@ -60,6 +60,8 @@ type Account struct {
 	CreatedAt string `json:"created_at"`
 	// Bio/description of this account.
 	Note string `json:"note"`
+	// Plaintext bio/description of this account.
+	NoteText string `json:"note_text"`
 	// Web location of the account's profile page.
 	// example: https://example.org/@some_user
 	URL string `json:"url"`

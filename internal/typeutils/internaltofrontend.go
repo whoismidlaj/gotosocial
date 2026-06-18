@@ -425,6 +425,7 @@ func (c *Converter) accountToAPIAccountPublic(ctx context.Context, a *gtsmodel.A
 		Bot:               a.ActorType.IsBot(),
 		CreatedAt:         util.FormatISO8601(a.CreatedAt),
 		Note:              a.Note,
+		NoteText:          a.NoteRaw,
 		URL:               a.URL,
 		Avatar:            aviURL,
 		AvatarStatic:      aviURLStatic,

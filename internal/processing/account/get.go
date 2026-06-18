@@ -133,3 +133,45 @@ func (p *Processor) GetCustomCSSForUsername(ctx context.Context, username string
 
 	return customCSS, nil
 }
+
+// GetByUsername fetches an account by its username (on the local instance) and converts it to apimodel.Account.
+func (p *Processor) GetByUsername(ctx context.Context, requestingAccount *gtsmodel.Account, username string) (*apimodel.Account, gtserror.WithCode) {
+	targetAccount, err := p.state.DB.GetAccountByUsernameDomain(ctx, username, "")
+	if err != nil {
+		if errors.Is(err, db.ErrNoEntries) {
+			err := gtserror.New("account not found")
+			return nil, gtserror.NewErrorNotFound(err)
+		}
+		err := gtserror.Newf("db error getting account: %w", err)
+		return nil, gtserror.NewErrorInternalError(err)
+	}
+
+	blocked, err := p.state.DB.IsEitherBlocked(ctx, requestingAccount.ID, targetAccount.ID)
+	if err != nil {
+		err := gtserror.Newf("db error checking blocks: %w", err)
+		return nil, gtserror.NewErrorInternalError(err)
+	}
+
+	if blocked {
+		apiAccount, err := p.converter.AccountToAPIAccountBlocked(ctx, targetAccount)
+		if err != nil {
+			err := gtserror.Newf("error converting account: %w", err)
+			return nil, gtserror.NewErrorInternalError(err)
+		}
+		return apiAccount, nil
+	}
+
+	var apiAccount *apimodel.Account
+	if targetAccount.ID == requestingAccount.ID {
+		apiAccount, err = p.converter.AccountToAPIAccountSensitive(ctx, targetAccount)
+	} else {
+		apiAccount, err = p.converter.AccountToAPIAccountPublic(ctx, targetAccount)
+	}
+	if err != nil {
+		err := gtserror.Newf("error converting account: %w", err)
+		return nil, gtserror.NewErrorInternalError(err)
+	}
+
+	return apiAccount, nil
+}
+

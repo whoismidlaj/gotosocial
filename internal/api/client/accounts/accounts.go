@@ -141,9 +141,19 @@ func (m *Module) Route(attachHandler func(method string, path string, f ...gin.H
 
 	// account themes
 	attachHandler(http.MethodGet, ThemesPath, m.AccountThemesGETHandler)
+
+	// Pixelfed compatibility: get account by username
+	attachHandler(http.MethodGet, "/v1.1/accounts/username/:username", m.AccountUsernameGETHandler)
+
+	// Pixelfed compatibility: get mutual followers (stub)
+	attachHandler(http.MethodGet, "/v1.1/accounts/mutuals/:id", m.AccountMutualsGETHandler)
 }
 
 func (m *Module) AccountAlbumsGETHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, []interface{}{})
+}
+
+func (m *Module) AccountMutualsGETHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, []interface{}{})
 }
 
