@@ -32,7 +32,7 @@ const (
 	hostMetaRel                     = "lrdd"
 	hostMetaType                    = "application/xrd+xml"
 	hostMetaTemplate                = ".well-known/webfinger?resource={uri}"
-	nodeInfoSoftwareName            = "gotosocial"
+	nodeInfoSoftwareName            = "pixelfed"
 	nodeInfo20Rel                   = "http://nodeinfo.diaspora.software/ns/schema/2.0"
 	nodeInfo21Rel                   = "http://nodeinfo.diaspora.software/ns/schema/2.1"
 	nodeInfoRepo                    = "https://codeberg.org/superseriousbusiness/gotosocial"
@@ -119,7 +119,7 @@ func (p *Processor) NodeInfoGet(ctx context.Context, schemaVersion string) (*api
 		Version: schemaVersion,
 		Software: apimodel.NodeInfoSoftware{
 			Name:    nodeInfoSoftwareName,
-			Version: config.GetSoftwareVersion(),
+			Version: "0.12.5",
 		},
 		Protocols: nodeInfoProtocols,
 		Services: apimodel.NodeInfoServices{

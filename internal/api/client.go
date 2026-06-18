@@ -250,7 +250,7 @@ func (c *Client) getNodeInfo20(ctx *gin.Context) {
 		return
 	}
 	nodeInfo.Software.Name = "pixelfed"
-	nodeInfo.Software.Version = "0.11.9"
+	nodeInfo.Software.Version = "0.12.5"
 	ctx.Header("Content-Type", "application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.0#\"")
 	ctx.JSON(http.StatusOK, nodeInfo)
 }
@@ -262,7 +262,7 @@ func (c *Client) getNodeInfo21(ctx *gin.Context) {
 		return
 	}
 	nodeInfo.Software.Name = "pixelfed"
-	nodeInfo.Software.Version = "0.11.9"
+	nodeInfo.Software.Version = "0.12.5"
 	ctx.Header("Content-Type", "application/json; profile=\"http://nodeinfo.diaspora.software/ns/schema/2.1#\"")
 	ctx.JSON(http.StatusOK, nodeInfo)
 }
